@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fault-tree/v1",
+  "title": "FaultTreeFile",
+  "type": "object",
+  "required": ["schema_version", "tree", "nodes", "edges", "evidence", "meta"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "fault-tree/v1"
+    },
+    "tree": {
+      "type": "object",
+      "required": ["id", "name", "top_event_id"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "top_event_id": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "label"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["top_event", "intermediate_event", "basic_event", "gate"]
+          },
+          "label": { "type": "string" },
+          "description": { "type": "string" },
+          "gate_type": {
+            "type": "string",
+            "enum": ["AND", "OR"]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "source", "target"],
+        "properties": {
+          "id": { "type": "string" },
+          "source": { "type": "string" },
+          "target": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "chunk_id"],
+        "properties": {
+          "id": { "type": "string" },
+          "chunk_id": { "type": "string" },
+          "document_name": { "type": "string" },
+          "text": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "meta": {
+      "type": "object",
+      "required": ["version", "based_on_version", "generated_at", "source_chunk_ids"],
+      "properties": {
+        "version": { "type": "string" },
+        "based_on_version": { "type": "string" },
+        "generated_at": { "type": "string" },
+        "source_chunk_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

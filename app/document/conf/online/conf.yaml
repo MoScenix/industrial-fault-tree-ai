@@ -1,0 +1,33 @@
+kitex:
+  service: "document"
+  address: ":8888"
+  log_level: info
+  log_file_name: "log/kitex.log"
+  log_max_size: 10
+  log_max_age: 3
+  log_max_backups: 50
+  metrics_port: ":9997"
+
+registry:
+  registry_address:
+    - consul:8500
+  username: ""
+  password: "%s"
+
+milvus:
+  address: "milvus-standalone:19530"
+  username: "root"
+  password: "%s"
+  database: "default"
+  collection_name: "document_chunks"
+
+embedding:
+  provider: "openai"
+  model: "text-embedding-3-small"
+  api_key: "%s"
+  base_url: ""
+  dimension: 1536
+  top_k: 5
+
+document:
+  pdf_dir: "/document"

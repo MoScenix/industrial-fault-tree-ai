@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project/v1",
+  "title": "ProjectFile",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project_id",
+    "project_name",
+    "device_name",
+    "top_event",
+    "current_version"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "project/v1"
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "project_name": {
+      "type": "string"
+    },
+    "device_name": {
+      "type": "string"
+    },
+    "top_event": {
+      "type": "string"
+    },
+    "current_version": {
+      "type": "string",
+      "pattern": "^v[0-9]{3}$"
+    }
+  },
+  "additionalProperties": true
+}

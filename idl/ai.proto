@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package ai;
+
+option go_package = "ai";
+
+message HistoryItem {
+  string role = 1;
+  string content = 2;
+}
+
+message ChatReq {
+  string project_id = 1;
+  repeated HistoryItem history = 2;
+}
+
+message ChatResp {
+  string content = 1;
+}
+
+message ValidateReq {
+  string project_id = 1;
+  string version = 2;
+}
+
+message ValidationIssue {
+  string message = 1;
+  string level = 2;
+  repeated string node_ids = 3;
+}
+
+message ValidateResp {
+  bool valid = 1;
+  string summary = 2;
+  repeated ValidationIssue issues = 3;
+}
+
+enum PromptMode {
+  PROMPT_MODE_UNSPECIFIED = 0;
+  CHAT_MODE = 1;
+  MODIFY_MODE = 2;
+}
+
+message UpdatePromptReq {
+  PromptMode mode = 1;
+  string content = 2;
+  string operator = 3;
+}
+
+message UpdatePromptResp {
+  bool success = 1;
+  PromptMode mode = 2;
+  string updated_at = 3;
+}
+
+service AiService {
+  rpc Chat(ChatReq) returns (stream ChatResp);
+  rpc Validate(ValidateReq) returns (ValidateResp);
+  rpc UpdatePrompt(UpdatePromptReq) returns (UpdatePromptResp);
+}

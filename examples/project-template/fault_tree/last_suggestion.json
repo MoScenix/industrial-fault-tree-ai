@@ -1,0 +1,16 @@
+{
+  "based_on_version": "v001",
+  "created_at": "2026-04-02T00:00:00Z",
+  "summary": "建议补充控制回路异常与功率模块异常两条中间事件。",
+  "node_suggestions": [
+    {
+      "target_type": "node",
+      "target_id": "node_top_001",
+      "action": "add_child_event",
+      "reason": "检索结果显示顶事件常由控制回路异常导致。",
+      "evidence_chunk_ids": ["chunk_010"]
+    }
+  ],
+  "edge_suggestions": [],
+  "general_suggestions": []
+}

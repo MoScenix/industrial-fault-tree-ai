@@ -1,0 +1,8 @@
+{
+  "schema_version": "project/v1",
+  "project_id": "proj_demo_001",
+  "project_name": "通用型驱动系统故障树项目",
+  "device_name": "通用型驱动系统",
+  "top_event": "驱动系统失效",
+  "current_version": "v001"
+}

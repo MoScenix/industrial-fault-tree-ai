@@ -1,0 +1,23 @@
+{
+  "schema_version": "fault-tree/v1",
+  "tree": {
+    "id": "tree_drive_failure_001",
+    "name": "通用型驱动系统失效故障树",
+    "top_event_id": "node_top_001"
+  },
+  "nodes": [
+    {
+      "id": "node_top_001",
+      "type": "top_event",
+      "label": "驱动系统失效"
+    }
+  ],
+  "edges": [],
+  "evidence": [],
+  "meta": {
+    "version": "v001",
+    "based_on_version": "v001",
+    "generated_at": "2026-04-02T00:00:00Z",
+    "source_chunk_ids": []
+  }
+}
