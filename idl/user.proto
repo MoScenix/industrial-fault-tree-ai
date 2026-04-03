@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package user;
+
+option go_package = "user";
+
+message LoginReq{
+  string userAccount  = 1;
+  string userPassword = 2;
+}
+
+message LoginResp{
+  uint32 user_id = 1;
+  string user_role = 2;
+}
+
+message RegisterReq{
+  string userAccount  = 1;
+  string userPassword = 2;
+}
+
+message RegisterResp{
+  uint32 user_id = 1;
+  string user_role = 2;
+}
+
+message UpdateReq {
+  int64  id          = 1;
+  string userName    = 2;
+  string userAvatar  = 3;
+  string userProfile = 4;
+  string userRole    = 5;
+}
+
+message UpdateResp {}
+
+message GetUserReq{
+  int64 id = 1;
+}
+
+message GetUserResp {
+  int64  id           = 1;
+  string userAccount  = 2;
+  string userPassword = 3;
+  string userName     = 4;
+  string userAvatar   = 5;
+  string userProfile  = 6;
+  string userRole     = 7;
+  string editTime     = 8;
+  string createTime   = 9;
+  string updateTime   = 10;
+  bool  isDelete     = 11;
+}
+
+message DeleteUserReq {
+  int64 userId = 1;
+}
+
+message AddUserReq {
+  string userAccount  = 2;
+  string userPassword = 3;
+  string userName     = 4;
+  string userAvatar   = 5;
+  string userProfile  = 6;
+  string userRole     = 7;
+}
+
+message AddUserResp {}
+
+message DeleteUserResp {}
+
+message ListUserReq {
+  int64 pageNum  = 1;
+  int64 pageSize = 2;
+  string userName = 3;
+  string account = 4;
+}
+
+message ListUserResp {
+  repeated GetUserResp userList = 1;
+  int64 total = 2;
+}
+
+service UserService {
+  rpc Login(LoginReq) returns (LoginResp);
+  rpc Register(RegisterReq) returns (RegisterResp);
+  rpc Update(UpdateReq) returns (UpdateResp);
+  rpc GetUser(GetUserReq) returns (GetUserResp);
+  rpc DeleteUser(DeleteUserReq) returns (DeleteUserResp);
+  rpc AddUser(AddUserReq) returns (AddUserResp);
+  rpc ListUser(ListUserReq) returns (ListUserResp);
+}
