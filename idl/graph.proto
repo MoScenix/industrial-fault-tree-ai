@@ -1,0 +1,191 @@
+syntax = "proto3";
+
+package graph;
+
+option go_package = "graph";
+
+message GraphInfo {
+  int64 id = 1;
+  string graph_name = 2;
+  string description = 3;
+  string cover = 4;
+  int64 user_id = 5;
+  string current_version = 6;
+  bool has_tmp = 7;
+  string create_time = 8;
+  string update_time = 9;
+}
+
+message GraphVersionInfo {
+  string version = 1;
+  string version_name = 2;
+  bool is_current = 3;
+  string create_time = 4;
+  string update_time = 5;
+}
+
+message GraphMessage {
+  int64 id = 1;
+  int64 graph_id = 2;
+  int64 user_id = 3;
+  string role = 4;
+  string content = 5;
+  string create_time = 6;
+  string update_time = 7;
+  int64 is_delete = 8;
+}
+
+message AddGraphReq {
+  string graph_name = 1;
+  string description = 2;
+  string cover = 3;
+  int64 user_id = 4;
+}
+
+message AddGraphResp {
+  int64 id = 1;
+}
+
+message DeleteGraphReq {
+  int64 id = 1;
+}
+
+message DeleteGraphResp {
+  bool success = 1;
+}
+
+message UpdateGraphReq {
+  int64 id = 1;
+  string graph_name = 2;
+  string description = 3;
+  string cover = 4;
+}
+
+message UpdateGraphResp {
+  bool success = 1;
+}
+
+message GetGraphReq {
+  int64 id = 1;
+}
+
+message GetGraphResp {
+  GraphInfo graph = 1;
+}
+
+message ListGraphReq {
+  int64 page_num = 1;
+  int64 page_size = 2;
+  string graph_name = 3;
+  int64 user_id = 4;
+}
+
+message ListGraphResp {
+  repeated GraphInfo graph_list = 1;
+  int64 total = 2;
+}
+
+message StartEditReq {
+  int64 graph_id = 1;
+}
+
+message StartEditResp {
+  bool success = 1;
+  bool tmp_ready = 2;
+  string based_on_version = 3;
+  string message = 4;
+}
+
+message SaveReq {
+  int64 graph_id = 1;
+  string from_version = 2;
+  string to_version = 3;
+  int64 operator_user_id = 4;
+  string remark = 5;
+}
+
+message SaveResp {
+  bool success = 1;
+  string from_version = 2;
+  string to_version = 3;
+  string message = 4;
+}
+
+message ListGraphMessageReq {
+  int64 graph_id = 1;
+  int64 page_size = 2;
+  string last_create_time = 3;
+}
+
+message ListGraphMessageResp {
+  repeated GraphMessage message_list = 1;
+  int64 total = 2;
+  bool has_more = 3;
+}
+
+message AddGraphMessageReq {
+  int64 graph_id = 1;
+  int64 user_id = 2;
+  string role = 3;
+  string content = 4;
+}
+
+message AddGraphMessageResp {
+  int64 id = 1;
+}
+
+message CreateVersionReq {
+  int64 graph_id = 1;
+  string version_name = 2;
+}
+
+message CreateVersionResp {
+  bool success = 1;
+  string version = 2;
+}
+
+message DeleteVersionReq {
+  int64 graph_id = 1;
+  string version = 2;
+}
+
+message DeleteVersionResp {
+  bool success = 1;
+}
+
+message RenameVersionReq {
+  int64 graph_id = 1;
+  string version = 2;
+  string version_name = 3;
+}
+
+message RenameVersionResp {
+  bool success = 1;
+}
+
+message ListVersionReq {
+  int64 graph_id = 1;
+}
+
+message ListVersionResp {
+  repeated GraphVersionInfo version_list = 1;
+}
+
+service GraphService {
+  rpc AddGraph(AddGraphReq) returns (AddGraphResp);
+  rpc DeleteGraph(DeleteGraphReq) returns (DeleteGraphResp);
+  rpc UpdateGraph(UpdateGraphReq) returns (UpdateGraphResp);
+  rpc GetGraph(GetGraphReq) returns (GetGraphResp);
+  rpc ListGraph(ListGraphReq) returns (ListGraphResp);
+
+  rpc StartEdit(StartEditReq) returns (StartEditResp);
+  rpc Save(SaveReq) returns (SaveResp);
+
+  rpc AddGraphMessage(AddGraphMessageReq) returns (AddGraphMessageResp);
+  rpc ListGraphMessage(ListGraphMessageReq) returns (ListGraphMessageResp);
+
+  rpc CreateVersion(CreateVersionReq) returns (CreateVersionResp);
+  rpc DeleteVersion(DeleteVersionReq) returns (DeleteVersionResp);
+  rpc RenameVersion(RenameVersionReq) returns (RenameVersionResp);
+  rpc ListVersion(ListVersionReq) returns (ListVersionResp);
+}

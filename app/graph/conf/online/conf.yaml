@@ -1,0 +1,27 @@
+kitex:
+  service: "graph"
+  address: ":8888"
+  log_level: info
+  log_file_name: "log/kitex.log"
+  log_max_size: 10
+  log_max_age: 3
+  log_max_backups: 50
+  metrics_port: ":9996"
+
+registry:
+  registry_address:
+    - consul:8500
+  username: ""
+  password: "%s"
+
+mysql:
+  dsn: "%s:%s@tcp(%s:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local"
+
+redis:
+  address: "redis:6379"
+  username: ""
+  password: "%s"
+  db: 0
+
+graph:
+  root_dir: "/graph"
