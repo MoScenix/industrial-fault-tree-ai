@@ -18,6 +18,7 @@ type Client interface {
 	Chat(ctx context.Context, Req *ai.ChatReq, callOptions ...callopt.Option) (stream AiService_ChatClient, err error)
 	Validate(ctx context.Context, Req *ai.ValidateReq, callOptions ...callopt.Option) (r *ai.ValidateResp, err error)
 	UpdatePrompt(ctx context.Context, Req *ai.UpdatePromptReq, callOptions ...callopt.Option) (r *ai.UpdatePromptResp, err error)
+	GetPrompt(ctx context.Context, Req *ai.GetPromptReq, callOptions ...callopt.Option) (r *ai.GetPromptResp, err error)
 }
 
 // StreamClient is designed to provide Interface for Streaming APIs.
@@ -74,6 +75,11 @@ func (p *kAiServiceClient) Validate(ctx context.Context, Req *ai.ValidateReq, ca
 func (p *kAiServiceClient) UpdatePrompt(ctx context.Context, Req *ai.UpdatePromptReq, callOptions ...callopt.Option) (r *ai.UpdatePromptResp, err error) {
 	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
 	return p.kClient.UpdatePrompt(ctx, Req)
+}
+
+func (p *kAiServiceClient) GetPrompt(ctx context.Context, Req *ai.GetPromptReq, callOptions ...callopt.Option) (r *ai.GetPromptResp, err error) {
+	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
+	return p.kClient.GetPrompt(ctx, Req)
 }
 
 // NewStreamClient creates a stream client for the service's streaming APIs defined in IDL.

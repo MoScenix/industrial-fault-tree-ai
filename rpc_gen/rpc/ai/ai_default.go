@@ -35,3 +35,12 @@ func UpdatePrompt(ctx context.Context, req *ai.UpdatePromptReq, callOptions ...c
 	}
 	return resp, nil
 }
+
+func GetPrompt(ctx context.Context, req *ai.GetPromptReq, callOptions ...callopt.Option) (resp *ai.GetPromptResp, err error) {
+	resp, err = defaultClient.GetPrompt(ctx, req, callOptions...)
+	if err != nil {
+		klog.CtxErrorf(ctx, "GetPrompt call failed,err =%+v", err)
+		return nil, err
+	}
+	return resp, nil
+}

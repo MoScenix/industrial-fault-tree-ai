@@ -15,3 +15,7 @@ gen-client: ## gen client code of {svc}. example: make gen-client svc=ai
 .PHONY: gen-server
 gen-server: ## gen service code of {svc}. example: make gen-server svc=ai
 	@cd app/${svc} && cwgo server --type RPC --service ${svc} --module github.com/MoScenix/industrial-fault-tree-ai/app/${svc} --pass "-use github.com/MoScenix/industrial-fault-tree-ai/rpc_gen/kitex_gen" -I ../../idl --idl ../../idl/${svc}.proto
+
+.PHONY: gen-bff
+gen-bff: ## gen bff code of {svc}. example: make gen-bff svc=graph
+	@cd app/bff && cwgo server -I ../../idl --type HTTP --service bff --module github.com/MoScenix/industrial-fault-tree-ai/app/bff --idl ../../idl/bff/${svc}_bff.proto

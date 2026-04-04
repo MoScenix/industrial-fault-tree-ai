@@ -15,6 +15,7 @@ type RPCClient interface {
 	Chat(ctx context.Context, Req *ai.ChatReq, callOptions ...callopt.Option) (stream aiservice.AiService_ChatClient, err error)
 	Validate(ctx context.Context, Req *ai.ValidateReq, callOptions ...callopt.Option) (r *ai.ValidateResp, err error)
 	UpdatePrompt(ctx context.Context, Req *ai.UpdatePromptReq, callOptions ...callopt.Option) (r *ai.UpdatePromptResp, err error)
+	GetPrompt(ctx context.Context, Req *ai.GetPromptReq, callOptions ...callopt.Option) (r *ai.GetPromptResp, err error)
 }
 
 func NewRPCClient(dstService string, opts ...client.Option) (RPCClient, error) {
@@ -53,4 +54,8 @@ func (c *clientImpl) Validate(ctx context.Context, Req *ai.ValidateReq, callOpti
 
 func (c *clientImpl) UpdatePrompt(ctx context.Context, Req *ai.UpdatePromptReq, callOptions ...callopt.Option) (r *ai.UpdatePromptResp, err error) {
 	return c.kitexClient.UpdatePrompt(ctx, Req, callOptions...)
+}
+
+func (c *clientImpl) GetPrompt(ctx context.Context, Req *ai.GetPromptReq, callOptions ...callopt.Option) (r *ai.GetPromptResp, err error) {
+	return c.kitexClient.GetPrompt(ctx, Req, callOptions...)
 }

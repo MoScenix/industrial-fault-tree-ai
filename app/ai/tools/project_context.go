@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 
+	lutils "github.com/MoScenix/industrial-fault-tree-ai/app/ai/utils"
 	"github.com/cloudwego/eino/components/tool"
 	einotool "github.com/cloudwego/eino/components/tool/utils"
 )
@@ -21,9 +22,19 @@ type ProjectContextResponse struct {
 }
 
 func GetProjectContextFunc(ctx context.Context, req *ProjectContextRequest) (*ProjectContextResponse, error) {
-	_ = ctx
 	_ = req
-	return &ProjectContextResponse{}, nil
+	projectCtx, _ := ctx.Value(lutils.ProjectContextKey).(*lutils.ProjectContext)
+	if projectCtx == nil {
+		return &ProjectContextResponse{}, nil
+	}
+	return &ProjectContextResponse{
+		ProjectID:       projectCtx.ProjectID,
+		DeviceName:      projectCtx.DeviceName,
+		TopEvent:        projectCtx.TopEvent,
+		CurrentVersion:  projectCtx.CurrentVersion,
+		TmpVersionReady: projectCtx.TmpVersionReady,
+		DocumentSummary: projectCtx.DocumentSummary,
+	}, nil
 }
 
 func NewGetProjectContextTool() (tool.InvokableTool, error) {

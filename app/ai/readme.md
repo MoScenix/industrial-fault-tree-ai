@@ -1,18 +1,37 @@
-# AI Module
+# AI
 
-This module is generated with `cwgo` and intentionally contains only skeleton files.
+当前 AI 微服务采用单 agent 架构。
 
-Current scope:
+## 当前接口
 
-- RPC definitions for `Chat`, `Validate`, and `UpdatePrompt`
-- internal AI tool skeletons built in the `eino` tool style
-- prompt placeholders for chat and modify modes
-- adjacency-list graph type definitions
+- `Chat`
+  - 修改模式
+  - 对话式辅助编辑
+- `Validate`
+  - 建议模式
+  - 输出版本建议 Markdown
+- `UpdatePrompt`
+  - 更新 prompt 文件
+- `GetPrompt`
+  - 读取当前 prompt
 
-Out of scope for this round:
+## 当前模式
 
-- model integration
-- rag implementation
-- tmp version copy logic
-- graph write logic
-- prompt persistence implementation
+- `MODIFY_MODE`
+  - 修改图
+- `LOG_MODE`
+  - 生成建议
+
+## 当前 tool
+
+- `get_project_context`
+- `rag_search`
+- `read_tmp_graph`
+- `write_tmp_graph`
+
+## 当前约束
+
+- AI 只写 `tmp/<version>/tree.json`
+- AI 校验只写 `suggestions/<version>.md`
+- AI 不负责版本保存
+- AI 不负责文档上传和解析

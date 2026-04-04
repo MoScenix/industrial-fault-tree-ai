@@ -347,6 +347,96 @@ func (x *UpdatePromptResp) fastReadField3(buf []byte, _type int8) (offset int, e
 	return offset, err
 }
 
+func (x *GetPromptReq) FastRead(buf []byte, _type int8, number int32) (offset int, err error) {
+	switch number {
+	case 1:
+		offset, err = x.fastReadField1(buf, _type)
+		if err != nil {
+			goto ReadFieldError
+		}
+	default:
+		offset, err = fastpb.Skip(buf, _type, number)
+		if err != nil {
+			goto SkipFieldError
+		}
+	}
+	return offset, nil
+SkipFieldError:
+	return offset, fmt.Errorf("%T cannot parse invalid wire-format data, error: %s", x, err)
+ReadFieldError:
+	return offset, fmt.Errorf("%T read field %d '%s' error: %s", x, number, fieldIDToName_GetPromptReq[number], err)
+}
+
+func (x *GetPromptReq) fastReadField1(buf []byte, _type int8) (offset int, err error) {
+	var v int32
+	v, offset, err = fastpb.ReadInt32(buf, _type)
+	if err != nil {
+		return offset, err
+	}
+	x.Mode = PromptMode(v)
+	return offset, nil
+}
+
+func (x *GetPromptResp) FastRead(buf []byte, _type int8, number int32) (offset int, err error) {
+	switch number {
+	case 1:
+		offset, err = x.fastReadField1(buf, _type)
+		if err != nil {
+			goto ReadFieldError
+		}
+	case 2:
+		offset, err = x.fastReadField2(buf, _type)
+		if err != nil {
+			goto ReadFieldError
+		}
+	case 3:
+		offset, err = x.fastReadField3(buf, _type)
+		if err != nil {
+			goto ReadFieldError
+		}
+	case 4:
+		offset, err = x.fastReadField4(buf, _type)
+		if err != nil {
+			goto ReadFieldError
+		}
+	default:
+		offset, err = fastpb.Skip(buf, _type, number)
+		if err != nil {
+			goto SkipFieldError
+		}
+	}
+	return offset, nil
+SkipFieldError:
+	return offset, fmt.Errorf("%T cannot parse invalid wire-format data, error: %s", x, err)
+ReadFieldError:
+	return offset, fmt.Errorf("%T read field %d '%s' error: %s", x, number, fieldIDToName_GetPromptResp[number], err)
+}
+
+func (x *GetPromptResp) fastReadField1(buf []byte, _type int8) (offset int, err error) {
+	x.Success, offset, err = fastpb.ReadBool(buf, _type)
+	return offset, err
+}
+
+func (x *GetPromptResp) fastReadField2(buf []byte, _type int8) (offset int, err error) {
+	var v int32
+	v, offset, err = fastpb.ReadInt32(buf, _type)
+	if err != nil {
+		return offset, err
+	}
+	x.Mode = PromptMode(v)
+	return offset, nil
+}
+
+func (x *GetPromptResp) fastReadField3(buf []byte, _type int8) (offset int, err error) {
+	x.Content, offset, err = fastpb.ReadString(buf, _type)
+	return offset, err
+}
+
+func (x *GetPromptResp) fastReadField4(buf []byte, _type int8) (offset int, err error) {
+	x.UpdatedAt, offset, err = fastpb.ReadString(buf, _type)
+	return offset, err
+}
+
 func (x *HistoryItem) FastWrite(buf []byte) (offset int) {
 	if x == nil {
 		return offset
@@ -577,6 +667,65 @@ func (x *UpdatePromptResp) fastWriteField3(buf []byte) (offset int) {
 		return offset
 	}
 	offset += fastpb.WriteString(buf[offset:], 3, x.GetUpdatedAt())
+	return offset
+}
+
+func (x *GetPromptReq) FastWrite(buf []byte) (offset int) {
+	if x == nil {
+		return offset
+	}
+	offset += x.fastWriteField1(buf[offset:])
+	return offset
+}
+
+func (x *GetPromptReq) fastWriteField1(buf []byte) (offset int) {
+	if x.Mode == 0 {
+		return offset
+	}
+	offset += fastpb.WriteInt32(buf[offset:], 1, int32(x.GetMode()))
+	return offset
+}
+
+func (x *GetPromptResp) FastWrite(buf []byte) (offset int) {
+	if x == nil {
+		return offset
+	}
+	offset += x.fastWriteField1(buf[offset:])
+	offset += x.fastWriteField2(buf[offset:])
+	offset += x.fastWriteField3(buf[offset:])
+	offset += x.fastWriteField4(buf[offset:])
+	return offset
+}
+
+func (x *GetPromptResp) fastWriteField1(buf []byte) (offset int) {
+	if !x.Success {
+		return offset
+	}
+	offset += fastpb.WriteBool(buf[offset:], 1, x.GetSuccess())
+	return offset
+}
+
+func (x *GetPromptResp) fastWriteField2(buf []byte) (offset int) {
+	if x.Mode == 0 {
+		return offset
+	}
+	offset += fastpb.WriteInt32(buf[offset:], 2, int32(x.GetMode()))
+	return offset
+}
+
+func (x *GetPromptResp) fastWriteField3(buf []byte) (offset int) {
+	if x.Content == "" {
+		return offset
+	}
+	offset += fastpb.WriteString(buf[offset:], 3, x.GetContent())
+	return offset
+}
+
+func (x *GetPromptResp) fastWriteField4(buf []byte) (offset int) {
+	if x.UpdatedAt == "" {
+		return offset
+	}
+	offset += fastpb.WriteString(buf[offset:], 4, x.GetUpdatedAt())
 	return offset
 }
 
@@ -813,6 +962,65 @@ func (x *UpdatePromptResp) sizeField3() (n int) {
 	return n
 }
 
+func (x *GetPromptReq) Size() (n int) {
+	if x == nil {
+		return n
+	}
+	n += x.sizeField1()
+	return n
+}
+
+func (x *GetPromptReq) sizeField1() (n int) {
+	if x.Mode == 0 {
+		return n
+	}
+	n += fastpb.SizeInt32(1, int32(x.GetMode()))
+	return n
+}
+
+func (x *GetPromptResp) Size() (n int) {
+	if x == nil {
+		return n
+	}
+	n += x.sizeField1()
+	n += x.sizeField2()
+	n += x.sizeField3()
+	n += x.sizeField4()
+	return n
+}
+
+func (x *GetPromptResp) sizeField1() (n int) {
+	if !x.Success {
+		return n
+	}
+	n += fastpb.SizeBool(1, x.GetSuccess())
+	return n
+}
+
+func (x *GetPromptResp) sizeField2() (n int) {
+	if x.Mode == 0 {
+		return n
+	}
+	n += fastpb.SizeInt32(2, int32(x.GetMode()))
+	return n
+}
+
+func (x *GetPromptResp) sizeField3() (n int) {
+	if x.Content == "" {
+		return n
+	}
+	n += fastpb.SizeString(3, x.GetContent())
+	return n
+}
+
+func (x *GetPromptResp) sizeField4() (n int) {
+	if x.UpdatedAt == "" {
+		return n
+	}
+	n += fastpb.SizeString(4, x.GetUpdatedAt())
+	return n
+}
+
 var fieldIDToName_HistoryItem = map[int32]string{
 	1: "Role",
 	2: "Content",
@@ -854,4 +1062,15 @@ var fieldIDToName_UpdatePromptResp = map[int32]string{
 	1: "Success",
 	2: "Mode",
 	3: "UpdatedAt",
+}
+
+var fieldIDToName_GetPromptReq = map[int32]string{
+	1: "Mode",
+}
+
+var fieldIDToName_GetPromptResp = map[int32]string{
+	1: "Success",
+	2: "Mode",
+	3: "Content",
+	4: "UpdatedAt",
 }

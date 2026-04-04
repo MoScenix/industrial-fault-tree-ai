@@ -37,6 +37,13 @@ var serviceMethods = map[string]kitex.MethodInfo{
 		false,
 		kitex.WithStreamingMode(kitex.StreamingUnary),
 	),
+	"GetPrompt": kitex.NewMethodInfo(
+		getPromptHandler,
+		newGetPromptArgs,
+		newGetPromptResult,
+		false,
+		kitex.WithStreamingMode(kitex.StreamingUnary),
+	),
 }
 
 var (
@@ -575,6 +582,159 @@ func (p *UpdatePromptResult) GetResult() interface{} {
 	return p.Success
 }
 
+func getPromptHandler(ctx context.Context, handler interface{}, arg, result interface{}) error {
+	switch s := arg.(type) {
+	case *streaming.Args:
+		st := s.Stream
+		req := new(ai.GetPromptReq)
+		if err := st.RecvMsg(req); err != nil {
+			return err
+		}
+		resp, err := handler.(ai.AiService).GetPrompt(ctx, req)
+		if err != nil {
+			return err
+		}
+		return st.SendMsg(resp)
+	case *GetPromptArgs:
+		success, err := handler.(ai.AiService).GetPrompt(ctx, s.Req)
+		if err != nil {
+			return err
+		}
+		realResult := result.(*GetPromptResult)
+		realResult.Success = success
+		return nil
+	default:
+		return errInvalidMessageType
+	}
+}
+func newGetPromptArgs() interface{} {
+	return &GetPromptArgs{}
+}
+
+func newGetPromptResult() interface{} {
+	return &GetPromptResult{}
+}
+
+type GetPromptArgs struct {
+	Req *ai.GetPromptReq
+}
+
+func (p *GetPromptArgs) FastRead(buf []byte, _type int8, number int32) (n int, err error) {
+	if !p.IsSetReq() {
+		p.Req = new(ai.GetPromptReq)
+	}
+	return p.Req.FastRead(buf, _type, number)
+}
+
+func (p *GetPromptArgs) FastWrite(buf []byte) (n int) {
+	if !p.IsSetReq() {
+		return 0
+	}
+	return p.Req.FastWrite(buf)
+}
+
+func (p *GetPromptArgs) Size() (n int) {
+	if !p.IsSetReq() {
+		return 0
+	}
+	return p.Req.Size()
+}
+
+func (p *GetPromptArgs) Marshal(out []byte) ([]byte, error) {
+	if !p.IsSetReq() {
+		return out, nil
+	}
+	return proto.Marshal(p.Req)
+}
+
+func (p *GetPromptArgs) Unmarshal(in []byte) error {
+	msg := new(ai.GetPromptReq)
+	if err := proto.Unmarshal(in, msg); err != nil {
+		return err
+	}
+	p.Req = msg
+	return nil
+}
+
+var GetPromptArgs_Req_DEFAULT *ai.GetPromptReq
+
+func (p *GetPromptArgs) GetReq() *ai.GetPromptReq {
+	if !p.IsSetReq() {
+		return GetPromptArgs_Req_DEFAULT
+	}
+	return p.Req
+}
+
+func (p *GetPromptArgs) IsSetReq() bool {
+	return p.Req != nil
+}
+
+func (p *GetPromptArgs) GetFirstArgument() interface{} {
+	return p.Req
+}
+
+type GetPromptResult struct {
+	Success *ai.GetPromptResp
+}
+
+var GetPromptResult_Success_DEFAULT *ai.GetPromptResp
+
+func (p *GetPromptResult) FastRead(buf []byte, _type int8, number int32) (n int, err error) {
+	if !p.IsSetSuccess() {
+		p.Success = new(ai.GetPromptResp)
+	}
+	return p.Success.FastRead(buf, _type, number)
+}
+
+func (p *GetPromptResult) FastWrite(buf []byte) (n int) {
+	if !p.IsSetSuccess() {
+		return 0
+	}
+	return p.Success.FastWrite(buf)
+}
+
+func (p *GetPromptResult) Size() (n int) {
+	if !p.IsSetSuccess() {
+		return 0
+	}
+	return p.Success.Size()
+}
+
+func (p *GetPromptResult) Marshal(out []byte) ([]byte, error) {
+	if !p.IsSetSuccess() {
+		return out, nil
+	}
+	return proto.Marshal(p.Success)
+}
+
+func (p *GetPromptResult) Unmarshal(in []byte) error {
+	msg := new(ai.GetPromptResp)
+	if err := proto.Unmarshal(in, msg); err != nil {
+		return err
+	}
+	p.Success = msg
+	return nil
+}
+
+func (p *GetPromptResult) GetSuccess() *ai.GetPromptResp {
+	if !p.IsSetSuccess() {
+		return GetPromptResult_Success_DEFAULT
+	}
+	return p.Success
+}
+
+func (p *GetPromptResult) SetSuccess(x interface{}) {
+	p.Success = x.(*ai.GetPromptResp)
+}
+
+func (p *GetPromptResult) IsSetSuccess() bool {
+	return p.Success != nil
+}
+
+func (p *GetPromptResult) GetResult() interface{} {
+	return p.Success
+}
+
 type kClient struct {
 	c client.Client
 }
@@ -621,6 +781,16 @@ func (p *kClient) UpdatePrompt(ctx context.Context, Req *ai.UpdatePromptReq) (r 
 	_args.Req = Req
 	var _result UpdatePromptResult
 	if err = p.c.Call(ctx, "UpdatePrompt", &_args, &_result); err != nil {
+		return
+	}
+	return _result.GetSuccess(), nil
+}
+
+func (p *kClient) GetPrompt(ctx context.Context, Req *ai.GetPromptReq) (r *ai.GetPromptResp, err error) {
+	var _args GetPromptArgs
+	_args.Req = Req
+	var _result GetPromptResult
+	if err = p.c.Call(ctx, "GetPrompt", &_args, &_result); err != nil {
 		return
 	}
 	return _result.GetSuccess(), nil

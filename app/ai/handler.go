@@ -28,3 +28,10 @@ func (s *AiServiceImpl) UpdatePrompt(ctx context.Context, req *ai.UpdatePromptRe
 
 	return resp, err
 }
+
+// GetPrompt implements the AiServiceImpl interface.
+func (s *AiServiceImpl) GetPrompt(ctx context.Context, req *ai.GetPromptReq) (resp *ai.GetPromptResp, err error) {
+	resp, err = service.NewGetPromptService(ctx).Run(req)
+
+	return resp, err
+}

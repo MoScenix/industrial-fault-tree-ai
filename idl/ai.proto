@@ -37,8 +37,8 @@ message ValidateResp {
 
 enum PromptMode {
   PROMPT_MODE_UNSPECIFIED = 0;
-  CHAT_MODE = 1;
-  MODIFY_MODE = 2;
+  MODIFY_MODE = 1;
+  LOG_MODE = 2;
 }
 
 message UpdatePromptReq {
@@ -53,8 +53,20 @@ message UpdatePromptResp {
   string updated_at = 3;
 }
 
+message GetPromptReq {
+  PromptMode mode = 1;
+}
+
+message GetPromptResp {
+  bool success = 1;
+  PromptMode mode = 2;
+  string content = 3;
+  string updated_at = 4;
+}
+
 service AiService {
   rpc Chat(ChatReq) returns (stream ChatResp);
   rpc Validate(ValidateReq) returns (ValidateResp);
   rpc UpdatePrompt(UpdatePromptReq) returns (UpdatePromptResp);
+  rpc GetPrompt(GetPromptReq) returns (GetPromptResp);
 }

@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"os"
 
 	lutils "github.com/MoScenix/industrial-fault-tree-ai/app/ai/utils"
 	"github.com/cloudwego/eino/components/tool"
@@ -20,9 +21,36 @@ type ReadTmpGraphResponse struct {
 }
 
 func ReadTmpGraphFunc(ctx context.Context, req *ReadTmpGraphRequest) (*ReadTmpGraphResponse, error) {
-	_ = ctx
-	_ = req
-	return &ReadTmpGraphResponse{}, nil
+	projectCtx, _ := ctx.Value(lutils.ProjectContextKey).(*lutils.ProjectContext)
+	if projectCtx == nil || projectCtx.ProjectID == "" {
+		return &ReadTmpGraphResponse{Graph: lutils.DefaultGraphFile("")}, nil
+	}
+
+	if req != nil && req.Version != "" {
+		graph, basedOnVersion, _, err := lutils.LoadWorkingGraph(projectCtx.ProjectID, req.Version)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return &ReadTmpGraphResponse{
+					Graph:          lutils.DefaultGraphFile(projectCtx.ProjectID),
+					BasedOnVersion: req.Version,
+				}, nil
+			}
+			return nil, err
+		}
+		return &ReadTmpGraphResponse{Graph: graph, BasedOnVersion: basedOnVersion}, nil
+	}
+
+	graph, basedOnVersion, _, err := lutils.LoadWorkingGraph(projectCtx.ProjectID, "")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return &ReadTmpGraphResponse{
+				Graph:          lutils.DefaultGraphFile(projectCtx.ProjectID),
+				BasedOnVersion: projectCtx.CurrentVersion,
+			}, nil
+		}
+		return nil, err
+	}
+	return &ReadTmpGraphResponse{Graph: graph, BasedOnVersion: basedOnVersion}, nil
 }
 
 func NewReadTmpGraphTool() (tool.InvokableTool, error) {

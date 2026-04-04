@@ -2,7 +2,14 @@ package service
 
 import (
 	"context"
+	"io"
+	"os"
 
+	lagent "github.com/MoScenix/industrial-fault-tree-ai/app/ai/agent"
+	"github.com/MoScenix/industrial-fault-tree-ai/app/ai/promptutil"
+	lutils "github.com/MoScenix/industrial-fault-tree-ai/app/ai/utils"
+	"github.com/cloudwego/eino/schema"
+	"github.com/cloudwego/kitex/pkg/klog"
 	ai "github.com/MoScenix/industrial-fault-tree-ai/rpc_gen/kitex_gen/ai"
 )
 
@@ -16,9 +23,56 @@ func NewChatService(ctx context.Context) *ChatService {
 }
 
 func (s *ChatService) Run(req *ai.ChatReq, stream ai.AiService_ChatServer) (err error) {
-	// TODO: inject chat system prompt, then orchestrate AI tools:
-	// get_project_context, rag_search, read_tmp_graph.
-	_ = req
-	_ = stream
-	return
+	currentVersion, _ := lutils.ReadCurrentVersion(req.ProjectId)
+	_, statErr := os.Stat(lutils.TmpTreePath(req.ProjectId))
+
+	s.ctx = context.WithValue(s.ctx, lutils.ProjectContextKey, &lutils.ProjectContext{
+		ProjectID:       req.ProjectId,
+		CurrentVersion:  currentVersion,
+		TmpVersionReady: statErr == nil,
+	})
+
+	prompt, err := promptutil.LoadPrompt(ai.PromptMode_MODIFY_MODE)
+	if err != nil {
+		return err
+	}
+	agent, err := lagent.NewAgent(s.ctx, ai.PromptMode_MODIFY_MODE)
+	if err != nil {
+		return err
+	}
+
+	messages := make([]*schema.Message, 0, len(req.History)+1)
+	messages = append(messages, schema.SystemMessage(prompt))
+	for _, history := range req.History {
+		switch history.Role {
+		case "assistant":
+			messages = append(messages, schema.AssistantMessage(history.Content, nil))
+		default:
+			messages = append(messages, schema.UserMessage(history.Content))
+		}
+	}
+
+	reader, err := agent.Stream(s.ctx, messages)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	for {
+		msg, recvErr := reader.Recv()
+		if recvErr != nil {
+			if recvErr == io.EOF {
+				break
+			}
+			klog.Error(recvErr)
+			return recvErr
+		}
+		if msg == nil || msg.Content == "" {
+			continue
+		}
+		if err := stream.Send(&ai.ChatResp{Content: msg.Content}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
