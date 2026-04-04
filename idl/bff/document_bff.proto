@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package bff.document;
+
+option go_package = "bff/document";
+
+import "api.proto";
+
+service DocumentService {
+  rpc UploadUserDocument(UploadUserDocumentRequest) returns (BaseResponseBoolean) {
+    option (api.post) = "/document/user/upload";
+  }
+
+  rpc UploadProjectDocument(UploadProjectDocumentRequest) returns (BaseResponseBoolean) {
+    option (api.post) = "/document/project/upload";
+  }
+}
+
+message BaseResponseBoolean {
+  int32 code = 1;
+  bool data = 2;
+  string message = 3;
+}
+
+message UploadUserDocumentRequest {
+  bytes file = 1 [(api.form) = "file"];
+  string fileName = 2 [(api.file_name) = "file"];
+}
+
+message UploadProjectDocumentRequest {
+  int64 graphId = 1;
+  bytes file = 2 [(api.form) = "file"];
+  string fileName = 3 [(api.file_name) = "file"];
+}

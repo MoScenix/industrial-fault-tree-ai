@@ -1,0 +1,335 @@
+syntax = "proto3";
+
+package bff.graph;
+
+option go_package = "bff/graph";
+
+import "api.proto";
+
+service GraphService {
+  rpc AddGraph(GraphAddRequest) returns (BaseResponseLong) {
+    option (api.post) = "/graph/add";
+  }
+
+  rpc DeleteGraph(DeleteRequest) returns (BaseResponseBoolean) {
+    option (api.post) = "/graph/delete";
+  }
+
+  rpc UpdateGraph(GraphUpdateRequest) returns (BaseResponseBoolean) {
+    option (api.post) = "/graph/update";
+  }
+
+  rpc GetGraphVOById(GetGraphVOByIdRequest) returns (BaseResponseGraphVO) {
+    option (api.get) = "/graph/get/vo";
+  }
+
+  rpc ListGraphVOByPage(GraphQueryRequest) returns (BaseResponsePageGraphVO) {
+    option (api.post) = "/graph/list/page/vo";
+  }
+
+  rpc StartEdit(StartEditRequest) returns (BaseResponseGraphEditState) {
+    option (api.post) = "/graph/edit/start";
+  }
+
+  rpc GetWorkingGraph(GetWorkingGraphRequest) returns (BaseResponseWorkingGraph) {
+    option (api.get) = "/graph/edit/working";
+  }
+
+  rpc GetCurrentSuggestion(GetCurrentSuggestionRequest) returns (BaseResponseGraphSuggestion) {
+    option (api.get) = "/graph/suggestion/current";
+  }
+
+  rpc DiscardWorkingGraph(DiscardWorkingGraphRequest) returns (BaseResponseBoolean) {
+    option (api.post) = "/graph/edit/discard";
+  }
+
+  rpc SaveGraph(SaveGraphRequest) returns (BaseResponseSaveResult) {
+    option (api.post) = "/graph/save";
+  }
+
+  rpc ListGraphVersion(ListGraphVersionRequest) returns (BaseResponsePageGraphVersionVO) {
+    option (api.get) = "/graph/version/list";
+  }
+
+  rpc CreateGraphVersion(CreateGraphVersionRequest) returns (BaseResponseString) {
+    option (api.post) = "/graph/version/create";
+  }
+
+  rpc DeleteGraphVersion(DeleteGraphVersionRequest) returns (BaseResponseBoolean) {
+    option (api.post) = "/graph/version/delete";
+  }
+
+  rpc RenameGraphVersion(RenameGraphVersionRequest) returns (BaseResponseBoolean) {
+    option (api.post) = "/graph/version/rename";
+  }
+
+  rpc ChatToModifyGraph(ChatToModifyGraphRequest) returns (stream ServerSentEventString) {
+    option (api.get) = "/graph/chat";
+  }
+
+  rpc ListGraphMessage(ListGraphMessageRequest) returns (BaseResponsePageGraphMessageVO) {
+    option (api.get) = "/graph/message/list";
+  }
+
+  rpc DownloadGraph(DownloadGraphRequest) returns (BaseResponseBytes) {
+    option (api.get) = "/graph/download/:graphId";
+  }
+}
+
+message BaseResponseBoolean {
+  int32 code = 1;
+  bool data = 2;
+  string message = 3;
+}
+
+message BaseResponseLong {
+  int32 code = 1;
+  int64 data = 2;
+  string message = 3;
+}
+
+message BaseResponseString {
+  int32 code = 1;
+  string data = 2;
+  string message = 3;
+}
+
+message BaseResponseBytes {
+  int32 code = 1;
+  bytes data = 2;
+  string message = 3;
+}
+
+message BaseResponseGraphVO {
+  int32 code = 1;
+  GraphVO data = 2;
+  string message = 3;
+}
+
+message BaseResponseWorkingGraph {
+  int32 code = 1;
+  WorkingGraphVO data = 2;
+  string message = 3;
+}
+
+message BaseResponseGraphSuggestion {
+  int32 code = 1;
+  GraphSuggestionVO data = 2;
+  string message = 3;
+}
+
+message BaseResponseGraphEditState {
+  int32 code = 1;
+  GraphEditState data = 2;
+  string message = 3;
+}
+
+message BaseResponseSaveResult {
+  int32 code = 1;
+  SaveResult data = 2;
+  string message = 3;
+}
+
+message BaseResponsePageGraphVO {
+  int32 code = 1;
+  PageGraphVO data = 2;
+  string message = 3;
+}
+
+message BaseResponsePageGraphVersionVO {
+  int32 code = 1;
+  PageGraphVersionVO data = 2;
+  string message = 3;
+}
+
+message BaseResponsePageGraphMessageVO {
+  int32 code = 1;
+  PageGraphMessageVO data = 2;
+  string message = 3;
+}
+
+message ServerSentEventString {
+  string d = 1;
+  string message = 2;
+}
+
+message DeleteRequest {
+  int64 id = 1;
+}
+
+message GraphAddRequest {
+  string graphName = 1;
+  string description = 2;
+  string cover = 3;
+}
+
+message GraphUpdateRequest {
+  int64 id = 1;
+  string graphName = 2;
+  string description = 3;
+  string cover = 4;
+}
+
+message GetGraphVOByIdRequest {
+  int64 id = 1 [(api.query) = "id"];
+}
+
+message GraphQueryRequest {
+  int64 pageNum = 1;
+  int64 pageSize = 2;
+  string sortField = 3;
+  string sortOrder = 4;
+  int64 id = 5;
+  string graphName = 6;
+  string description = 7;
+  int64 userId = 8;
+}
+
+message StartEditRequest {
+  int64 graphId = 1;
+  string version = 2;
+}
+
+message GetWorkingGraphRequest {
+  int64 graphId = 1 [(api.query) = "graphId"];
+  string version = 2 [(api.query) = "version"];
+}
+
+message GetCurrentSuggestionRequest {
+  int64 graphId = 1 [(api.query) = "graphId"];
+  string version = 2 [(api.query) = "version"];
+}
+
+message DiscardWorkingGraphRequest {
+  int64 graphId = 1;
+}
+
+message SaveGraphRequest {
+  int64 graphId = 1;
+  string fromVersion = 2;
+  string toVersion = 3;
+  string remark = 4;
+  bool useTmp = 5;
+  string content = 6;
+}
+
+message ListGraphVersionRequest {
+  int64 graphId = 1 [(api.query) = "graphId"];
+}
+
+message CreateGraphVersionRequest {
+  int64 graphId = 1;
+  string versionName = 2;
+}
+
+message DeleteGraphVersionRequest {
+  int64 graphId = 1;
+  string version = 2;
+}
+
+message RenameGraphVersionRequest {
+  int64 graphId = 1;
+  string version = 2;
+  string versionName = 3;
+}
+
+message ChatToModifyGraphRequest {
+  int64 graphId = 1 [(api.query) = "graphId"];
+  string message = 2 [(api.query) = "message"];
+}
+
+message ListGraphMessageRequest {
+  int64 graphId = 1 [(api.query) = "graphId"];
+  int64 pageSize = 2 [(api.query) = "pageSize"];
+  string lastCreateTime = 3 [(api.query) = "lastCreateTime"];
+}
+
+message DownloadGraphRequest {
+  int64 graphId = 1 [(api.path) = "graphId"];
+  string version = 2 [(api.query) = "version"];
+  bool isTmp = 3 [(api.query) = "isTmp"];
+}
+
+message GraphVO {
+  int64 id = 1;
+  string graphName = 2;
+  string description = 3;
+  string cover = 4;
+  int64 userId = 5;
+  string currentVersion = 6;
+  bool hasTmp = 7;
+  string createTime = 8;
+  string updateTime = 9;
+}
+
+message WorkingGraphVO {
+  int64 graphId = 1;
+  string version = 2;
+  bool isTmp = 3;
+  string content = 4;
+}
+
+message GraphSuggestionVO {
+  int64 graphId = 1;
+  string version = 2;
+  string content = 3;
+  string updateTime = 4;
+}
+
+message GraphEditState {
+  int64 graphId = 1;
+  bool tmpReady = 2;
+  string basedOnVersion = 3;
+  string message = 4;
+}
+
+message SaveResult {
+  string fromVersion = 1;
+  string toVersion = 2;
+  string message = 3;
+}
+
+message GraphVersionVO {
+  string version = 1;
+  string versionName = 2;
+  bool isCurrent = 3;
+  string createTime = 4;
+  string updateTime = 5;
+}
+
+message GraphMessageVO {
+  int64 id = 1;
+  int64 graphId = 2;
+  int64 userId = 3;
+  string role = 4;
+  string content = 5;
+  string createTime = 6;
+  string updateTime = 7;
+}
+
+message PageGraphVO {
+  repeated GraphVO records = 1;
+  int64 pageNumber = 2;
+  int64 pageSize = 3;
+  int64 totalPage = 4;
+  int64 totalRow = 5;
+  bool optimizeCountQuery = 6;
+}
+
+message PageGraphVersionVO {
+  repeated GraphVersionVO records = 1;
+  int64 pageNumber = 2;
+  int64 pageSize = 3;
+  int64 totalPage = 4;
+  int64 totalRow = 5;
+  bool optimizeCountQuery = 6;
+}
+
+message PageGraphMessageVO {
+  repeated GraphMessageVO records = 1;
+  int64 pageNumber = 2;
+  int64 pageSize = 3;
+  int64 totalPage = 4;
+  int64 totalRow = 5;
+  bool optimizeCountQuery = 6;
+}

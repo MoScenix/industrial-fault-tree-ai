@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package bff.ai;
+
+option go_package = "bff/ai";
+
+import "api.proto";
+
+service AiService {
+  rpc GetPrompt(GetPromptRequest) returns (BaseResponsePromptVO) {
+    option (api.get) = "/ai/prompt/get";
+  }
+
+  rpc UpdatePrompt(UpdatePromptRequest) returns (BaseResponseBoolean) {
+    option (api.post) = "/ai/prompt/update";
+  }
+}
+
+message BaseResponseBoolean {
+  int32 code = 1;
+  bool data = 2;
+  string message = 3;
+}
+
+message BaseResponsePromptVO {
+  int32 code = 1;
+  PromptVO data = 2;
+  string message = 3;
+}
+
+message GetPromptRequest {
+  int32 mode = 1 [(api.query) = "mode"];
+}
+
+message UpdatePromptRequest {
+  int32 mode = 1;
+  string content = 2;
+}
+
+message PromptVO {
+  int32 mode = 1;
+  string content = 2;
+  string updatedAt = 3;
+}

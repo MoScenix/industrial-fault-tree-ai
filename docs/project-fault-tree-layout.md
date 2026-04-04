@@ -1,61 +1,77 @@
 # 项目故障树目录设计
 
-每个项目一个目录，故障树按版本独立存放：
+当前实现已经统一为“数据库存项目基础信息，文件系统存图版本、暂存图、建议和项目文档”。
+
+项目目录根路径来自 `graph.root_dir`，默认值是 `/graph`。
+
+每个项目目录使用项目创建时生成的 `uuid`：
 
 ```text
-projects/
-  <project_id>/
-    project.json
-    fault_tree/
-      current
-      versions/
-        v001/
-          tree.json
-        v002/
-          tree.json
-      tmpversion/
-        tree.json
-      last_suggestion.json
+/graph/<project_uuid>/
+  current
+  documents/
+    <pdf_id>.pdf
+  versions/
+    v001/
+      tree.json
+    v002/
+      tree.json
+  tmp/
+    v001/
+      tree.json
+    v002/
+      tree.json
+  suggestions/
+    v001.md
+    v002.md
 ```
 
 ## 目录职责
 
-### `project.json`
+### `current`
 
-项目基础信息，至少包含：
-
-- 项目名
-- 设备名
-- 顶事件
-- 当前正式版本号
-
-### `fault_tree/current`
-
-当前正式版本指针。
-
-文件内容直接保存版本号，例如：
+当前版本指针，文件内容直接保存版本号，例如：
 
 `v002`
 
-### `fault_tree/versions/v001/tree.json`
+### `versions/<version>/tree.json`
 
-正式版本图。
+目录版本文件。
 
-### `fault_tree/tmpversion/tree.json`
+### `tmp/<version>/tree.json`
 
-AI 最近一次生成的中间版本，用于：
+指定版本对应的暂存编辑内容。
 
-- 审核
-- 比对
-- 回撤
+适用场景：
 
-### `fault_tree/last_suggestion.json`
+- AI 修改图
+- 工程师继续编辑
+- 前端优先展示暂存版本
 
-只保留最后一次建议，不保留建议历史，也不混入其他运行信息。
+### `suggestions/<version>.md`
 
-## 设计约束
+指定版本的建议文件。
 
-- 正式版本和 `tmpversion` 使用完全同一份 `tree.json` 结构
-- AI 写图只能写 `tmpversion`
-- 正式版本的晋升由程序完成，不由 AI 直接改写
-- 前端可以直接读取正式版本，也可以读取临时版本进行审核对比
+说明：
+
+- AI 校验只写建议
+- 不会直接改图
+
+### `documents/<pdf_id>.pdf`
+
+项目归档文档。
+
+说明：
+
+- BFF 上传项目文档时会把 PDF 复制到这里
+- 文档微服务实际解析时读取全局 `/document/<pdf_id>.pdf`
+
+## 当前约束
+
+- 数据库不存版本列表
+- 数据库不存当前建议
+- 不再使用 `project.json`
+- 版本列表直接扫描 `versions/`
+- 当前版本通过 `current` 文件读取
+- `tmp` 按版本分目录
+- 建议按版本分文件

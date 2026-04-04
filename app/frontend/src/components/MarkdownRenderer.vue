@@ -1,0 +1,189 @@
+<template>
+  <div class="custom-md" v-html="renderedHtml"></div>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import MarkdownIt from 'markdown-it'
+import hljs from 'highlight.js'
+import DOMPurify from 'dompurify'
+
+import 'highlight.js/styles/github.css'
+
+interface Props {
+  content: string
+}
+const props = defineProps<Props>()
+
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+  breaks: true,
+})
+md.set({
+  highlight: (str: string, lang: string): string => {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return `<pre class="hljs"><code>${hljs.highlight(str, { language: lang, ignoreIllegals: true }).value}</code></pre>`
+      } catch {
+        // ignore
+      }
+    }
+    return `<pre class="hljs"><code>${md.utils.escapeHtml(str)}</code></pre>`
+  },
+})
+
+
+const renderedHtml = computed(() => {
+  const raw = md.render(props.content || '')
+  return DOMPurify.sanitize(raw)
+})
+</script>
+
+<style scoped lang="postcss">
+/**
+ * 关键：v-html 插入的内容要用 :deep 才能在 scoped 下生效
+ * 你这套样式我原封不动搬进来，只是外层包了一层 :deep(.custom-md)
+ */
+:deep(.custom-md) {
+  h1 {
+    @apply text-3xl;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    .anchor {
+      @apply transition -m-0.5 ml-[0.2ch] p-0.5 select-none opacity-0 no-underline !important;
+
+      .anchor-icon {
+        @apply mx-[0.45ch] !important;
+      }
+    }
+
+    &:hover {
+      .anchor {
+        @apply opacity-100 !important;
+      }
+    }
+  }
+
+  a:not(.no-styling) {
+    @apply relative bg-none font-medium text-[var(--primary)] underline decoration-[var(--link-underline)] decoration-1 decoration-dashed underline-offset-4;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    display: inline-block;
+
+    &:hover,
+    &:active {
+      @apply decoration-transparent;
+      background: var(--btn-plain-bg-hover);
+      border-bottom: 1px dashed var(--link-hover);
+      text-decoration: none;
+    }
+  }
+
+  code {
+    @apply bg-[var(--inline-code-bg)] text-[var(--inline-code-color)] px-1 py-0.5 rounded-md overflow-hidden;
+
+    font-family: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      Liberation Mono, Courier New, monospace;
+
+    &:before {
+      content: none;
+    }
+
+    &:after {
+      content: none;
+    }
+
+    counter-reset: line;
+
+    span.line {
+      &:before {
+        @apply text-white/25 mr-4 w-4 inline-block;
+        content: counter(line);
+        counter-increment: line;
+        direction: rtl;
+      }
+
+      &:last-child:empty,
+      &:last-child:has(> span:empty:only-child) {
+        display: none;
+      }
+    }
+  }
+
+  .copy-btn {
+    all: initial;
+    @apply opacity-0 shadow-lg shadow-black/50 absolute active:scale-90 h-8 w-8 top-3 right-3 text-sm rounded-lg transition-all ease-in-out z-20 cursor-pointer bg-black/60 hover:bg-black/70 text-white;
+  }
+
+  .frame:hover .copy-btn {
+    opacity: 1;
+  }
+
+  .copy-btn-icon {
+    @apply absolute top-1/2 left-1/2 transition -translate-x-1/2 -translate-y-1/2 w-4 h-4 fill-white pointer-events-none;
+  }
+
+  .copy-btn .copy-icon {
+    @apply opacity-100 fill-white dark:fill-white/75;
+  }
+
+  .copy-btn.success .copy-icon {
+    @apply opacity-0 fill-[var(--deep-text)];
+  }
+
+  .copy-btn .success-icon {
+    @apply opacity-0 fill-white;
+  }
+
+  .copy-btn.success .success-icon {
+    @apply opacity-100;
+  }
+
+  .expressive-code {
+    @apply my-4;
+
+    ::selection {
+      @apply bg-[var(--codeblock-selection)];
+    }
+  }
+
+  ul,
+  ol {
+    li::marker {
+      @apply text-[var(--primary)];
+    }
+  }
+
+  blockquote {
+    @apply not-italic border-transparent relative;
+    font-weight: inherit;
+
+    &:before {
+      @apply content-[''] absolute -left-1 block transition bg-[var(--btn-regular-bg)] h-full w-1 rounded-full;
+    }
+
+    p:before,
+    p:after {
+      @apply content-none;
+    }
+  }
+
+  .katex-display-container {
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 1em 0;
+  }
+}
+
+:deep(.ant-btn) {
+  @apply transition-all duration-200;
+}
+</style>

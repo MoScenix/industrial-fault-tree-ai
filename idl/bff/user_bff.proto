@@ -1,0 +1,213 @@
+syntax = "proto3";
+
+package bff.user;
+
+option go_package = "bff/user";
+
+import "api.proto";
+import "bff/common.proto";
+
+// =====================
+// Service
+// =====================
+service UserService {
+  rpc AddUser(UserAddRequest) returns (BaseResponseLong) {
+    option (api.post) = "/user/add";
+  }
+
+  rpc DeleteUser(DeleteRequest) returns (BaseResponseBoolean) {
+    option (api.post) = "/user/delete";
+  }
+
+  // GET /user/get?id=xxx
+  rpc GetUserById(GetUserByIdRequest) returns (BaseResponseUser) {
+    option (api.get) = "/user/get";
+  }
+
+  // GET /user/get/login
+  rpc GetLoginUser(common.Empty) returns (BaseResponseLoginUserVO) {
+    option (api.get) = "/user/get/login";
+  }
+
+  // GET /user/get/vo?id=xxx
+  rpc GetUserVOById(GetUserVOByIdRequest) returns (BaseResponseUserVO) {
+    option (api.get) = "/user/get/vo";
+  }
+
+  // POST /user/list/page/vo
+  rpc ListUserVOByPage(UserQueryRequest) returns (BaseResponsePageUserVO) {
+    option (api.post) = "/user/list/page/vo";
+  }
+
+  // POST /user/login
+  rpc UserLogin(UserLoginRequest) returns (BaseResponseLoginUserVO) {
+    option (api.post) = "/user/login";
+  }
+
+  // POST /user/logout
+  rpc UserLogout(common.Empty) returns (BaseResponseBoolean) {
+    option (api.post) = "/user/logout";
+  }
+
+  // POST /user/register
+  rpc UserRegister(UserRegisterRequest) returns (BaseResponseLong) {
+    option (api.post) = "/user/register";
+  }
+
+  // POST /user/update
+  rpc UpdateUser(UserUpdateRequest) returns (BaseResponseBoolean) {
+    option (api.post) = "/user/update";
+  }
+}
+
+// =====================
+// Common response wrappers
+// =====================
+message BaseResponseBoolean {
+  int32 code = 1;
+  bool data = 2;
+  string message = 3;
+}
+
+message BaseResponseLong {
+  int32 code = 1;
+  int64 data = 2;
+  string message = 3;
+}
+
+message BaseResponseString {
+  int32 code = 1;
+  string data = 2;
+  string message = 3;
+}
+
+message BaseResponseUser {
+  int32 code = 1;
+  User data = 2;
+  string message = 3;
+}
+
+message BaseResponseUserVO {
+  int32 code = 1;
+  UserVO data = 2;
+  string message = 3;
+}
+
+message BaseResponseLoginUserVO {
+  int32 code = 1;
+  LoginUserVO data = 2;
+  string message = 3;
+}
+
+message BaseResponsePageUserVO {
+  int32 code = 1;
+  PageUserVO data = 2;
+  string message = 3;
+}
+
+// =====================
+// Requests
+// =====================
+message DeleteRequest {
+  int64 id = 1;
+}
+
+message GetUserByIdRequest {
+  // from query: /user/get?id=123
+  int64 id = 1 [(api.query) = "id"];
+}
+
+message GetUserVOByIdRequest {
+  int64 id = 1 [(api.query) = "id"];
+}
+
+message UserAddRequest {
+  string userName = 1;
+  string userAccount = 2;
+  string userAvatar = 3;
+  string userProfile = 4;
+  string userRole = 5;
+}
+
+message UserUpdateRequest {
+  int64 id = 1;
+  string userName = 2;
+  string userAvatar = 3;
+  string userProfile = 4;
+  string userRole = 5;
+}
+
+message UserLoginRequest {
+  string userAccount = 1;
+  string userPassword = 2;
+}
+
+message UserRegisterRequest {
+  string userAccount = 1;
+  string userPassword = 2;
+  string checkPassword = 3;
+}
+
+message UserQueryRequest {
+  int64 pageNum = 1;
+  int64 pageSize = 2;
+  string sortField = 3;
+  string sortOrder = 4;
+
+  int64 id = 5;
+  string userName = 6;
+  string userAccount = 7;
+  string userProfile = 8;
+  string userRole = 9;
+}
+
+// =====================
+// Entities / VOs
+// =====================
+message User {
+  int64 id = 1;
+  string userAccount = 2;
+  string userPassword = 3;
+  string userName = 4;
+  string userAvatar = 5;
+  string userProfile = 6;
+  string userRole = 7;
+
+  string editTime = 8;
+  string createTime = 9;
+  string updateTime = 10;
+  int32 isDelete = 11;
+}
+
+message UserVO {
+  int64 id = 1;
+  string userAccount = 2;
+  string userName = 3;
+  string userAvatar = 4;
+  string userProfile = 5;
+  string userRole = 6;
+  string createTime = 7;
+}
+
+message LoginUserVO {
+  int64 id = 1;
+  string userAccount = 2;
+  string userName = 3;
+  string userAvatar = 4;
+  string userProfile = 5;
+  string userRole = 6;
+  string createTime = 7;
+  string updateTime = 8;
+}
+
+// =====================
+// Pagination
+// =====================
+message PageUserVO {
+  repeated UserVO records = 1;
+  int64 pageNumber = 2;
+  int64 pageSize = 3;
+  int64 totalPage = 4;
+  int64 totalRow = 5;
+  bool optimizeCountQuery = 6;
+}

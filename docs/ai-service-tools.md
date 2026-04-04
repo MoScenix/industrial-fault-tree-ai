@@ -1,137 +1,107 @@
-# AI 服务 Tool 设计
+# AI 服务 Tool 说明
 
-AI 服务只消费“程序已经准备好的项目上下文”和“文档微服务已经完成的解析/索引结果”。
+当前 AI 服务采用单 agent 架构，只有两种模式：
 
-以下 tool 都由 AI 服务内部调用，但项目上下文由业务程序注入，AI 本身不传 `project_id`、用户信息、目录路径。
+- `MODIFY_MODE`
+  - 用于对话式修改图
+- `LOG_MODE`
+  - 用于生成建议和校验说明
 
-## Tool 列表
+两种模式共用同一套 agent 工厂，差异只有：
 
-### 1. `get_project_context`
+- system prompt
+- 使用场景
 
-用途：
+## 当前 Tool
 
-- 读取当前项目上下文
+### `get_project_context`
 
-AI 入参：
+作用：
 
-- 无
+- 读取项目运行上下文
 
-程序注入上下文：
+返回信息：
 
 - `project_id`
-- `device_name`
-- `top_event`
 - `current_version`
-- `available_versions`
-
-返回：
-
-- `device_name`
-- `top_event`
-- `current_version`
-- `tree_summary`
+- `tmp_version_ready`
 - `document_summary`
 
-### 2. `rag_search`
+### `rag_search`
 
-用途：
+作用：
 
-- 在当前项目已解析文档中做检索
+- 在当前项目的已解析文档中检索相关内容
 
-AI 入参：
+输入：
 
 - `query`
 - `top_k`
 - `filters`
 
-程序隐式约束：
-
-- 只能搜索当前项目
-- 只能搜索已解析完成的文档索引
-
 返回：
-
-- `chunks[]`
-
-每个 chunk 至少包含：
 
 - `chunk_id`
 - `document_name`
 - `text`
 - `score`
 
-### 3. `read_fault_tree`
+### `read_tmp_graph`
 
-用途：
+作用：
 
-- 读取当前图或指定历史版本
+- 读取当前工作图
 
-AI 入参：
+规则：
 
-- 可选 `version`
+- 指定 `version` 时，优先读该版本的 `tmp/<version>/tree.json`
+- 如果该版本没有 `tmp`，则读取 `versions/<version>/tree.json`
+- 不传 `version` 时，默认读取 `current` 指向的版本
 
-默认行为：
+### `write_tmp_graph`
 
-- 不传时读取当前正式版本
+作用：
 
-返回：
+- 将 AI 整理好的完整图写回 `tmp/<version>/tree.json`
 
-- `tree`
-- `version`
-- `is_tmp_version`
+规则：
 
-### 4. `write_tmp_fault_tree`
+- 只允许写 `tmp`
+- 不直接碰目录版本
+- 写回后由工程师决定是否保存
 
-用途：
+## 当前 AI 业务语义
 
-- 写 AI 生成或修改后的中间图
-
-AI 入参：
-
-- `tree`
-- `change_summary`
-
-行为：
-
-- 永远不覆盖正式版本
-- 始终写入 `fault_tree/tmpversion/tree.json`
-- 覆盖上一次临时版本
-
-返回：
-
-- `tmp_version_path`
-- `based_on_version`
-
-### 5. `write_last_suggestion`
-
-用途：
-
-- 保存 AI 的最后一次建议
-
-AI 入参：
-
-- `suggestions`
-
-行为：
-
-- 只保留最后一次建议
-- 每次写入直接覆盖 `fault_tree/last_suggestion.json`
-
-返回：
-
-- `suggestion_path`
+- `Chat`
+  - 使用 `MODIFY_MODE`
+  - 允许读写 `tmp`
+- `Validate`
+  - 使用 `LOG_MODE`
+  - 只生成建议 Markdown
+  - 建议文件写入 `suggestions/<version>.md`
+- `UpdatePrompt`
+  - 只改 prompt 文件
+  - 当前仅支持：
+    - `MODIFY_MODE`
+    - `LOG_MODE`
 
 ## 不属于 AI Tool 的职责
 
-下面这些能力明确不进入 AI tool：
+下面这些能力不属于 AI tool：
 
 - 新建项目目录
-- 文档上传
+- 版本创建 / 删除 / 重命名
+- 项目保存
+- 上传文档
 - 文档解析
-- 文档切片
-- 向量化建库
-- 正式版本晋升
-- 版本切换
-- 权限控制
+- 用户权限控制
+- 提示词页面编排
 
-这些由业务程序或文档微服务负责。
+这些分别由：
+
+- Graph 微服务
+- Document 微服务
+- BFF
+- Frontend
+
+共同负责。
