@@ -644,6 +644,11 @@ func (x *StartEditReq) FastRead(buf []byte, _type int8, number int32) (offset in
 		if err != nil {
 			goto ReadFieldError
 		}
+	case 2:
+		offset, err = x.fastReadField2(buf, _type)
+		if err != nil {
+			goto ReadFieldError
+		}
 	default:
 		offset, err = fastpb.Skip(buf, _type, number)
 		if err != nil {
@@ -659,6 +664,11 @@ ReadFieldError:
 
 func (x *StartEditReq) fastReadField1(buf []byte, _type int8) (offset int, err error) {
 	x.GraphId, offset, err = fastpb.ReadInt64(buf, _type)
+	return offset, err
+}
+
+func (x *StartEditReq) fastReadField2(buf []byte, _type int8) (offset int, err error) {
+	x.Version, offset, err = fastpb.ReadString(buf, _type)
 	return offset, err
 }
 
@@ -1743,6 +1753,7 @@ func (x *StartEditReq) FastWrite(buf []byte) (offset int) {
 		return offset
 	}
 	offset += x.fastWriteField1(buf[offset:])
+	offset += x.fastWriteField2(buf[offset:])
 	return offset
 }
 
@@ -1751,6 +1762,14 @@ func (x *StartEditReq) fastWriteField1(buf []byte) (offset int) {
 		return offset
 	}
 	offset += fastpb.WriteInt64(buf[offset:], 1, x.GetGraphId())
+	return offset
+}
+
+func (x *StartEditReq) fastWriteField2(buf []byte) (offset int) {
+	if x.Version == "" {
+		return offset
+	}
+	offset += fastpb.WriteString(buf[offset:], 2, x.GetVersion())
 	return offset
 }
 
@@ -2672,6 +2691,7 @@ func (x *StartEditReq) Size() (n int) {
 		return n
 	}
 	n += x.sizeField1()
+	n += x.sizeField2()
 	return n
 }
 
@@ -2680,6 +2700,14 @@ func (x *StartEditReq) sizeField1() (n int) {
 		return n
 	}
 	n += fastpb.SizeInt64(1, x.GetGraphId())
+	return n
+}
+
+func (x *StartEditReq) sizeField2() (n int) {
+	if x.Version == "" {
+		return n
+	}
+	n += fastpb.SizeString(2, x.GetVersion())
 	return n
 }
 
@@ -3208,6 +3236,7 @@ var fieldIDToName_ListGraphResp = map[int32]string{
 
 var fieldIDToName_StartEditReq = map[int32]string{
 	1: "GraphId",
+	2: "Version",
 }
 
 var fieldIDToName_StartEditResp = map[int32]string{

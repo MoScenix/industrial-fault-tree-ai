@@ -29,19 +29,22 @@ func (s *StartEditService) Run(req *graph.StartEditReq) (resp *graph.StartEditRe
 		return nil, err
 	}
 
-	currentVersion, err := utils.ReadCurrentVersion(item.ProjectDir)
-	if err != nil {
-		return nil, err
+	basedOnVersion := req.Version
+	if basedOnVersion == "" {
+		basedOnVersion, err = utils.ReadCurrentVersion(item.ProjectDir)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	if err := utils.EnsureTmpFromVersion(item.ProjectDir, currentVersion); err != nil {
+	if err := utils.EnsureTmpFromVersion(item.ProjectDir, basedOnVersion); err != nil {
 		return nil, err
 	}
 
 	return &graph.StartEditResp{
 		Success:        true,
 		TmpReady:       true,
-		BasedOnVersion: currentVersion,
+		BasedOnVersion: basedOnVersion,
 		Message:        "tmp ready",
 	}, nil
 }

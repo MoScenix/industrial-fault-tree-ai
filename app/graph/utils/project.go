@@ -13,6 +13,7 @@ import (
 const (
 	VersionsDirName = "versions"
 	TmpDirName      = "tmp"
+	SuggestionDirName = "suggestions"
 	CurrentFileName = "current"
 	DefaultVersion  = "v001"
 )
@@ -44,6 +45,18 @@ func TmpDir(projectDir string) string {
 	return filepath.Join(projectDir, TmpDirName)
 }
 
+func TmpVersionDir(projectDir, version string) string {
+	return filepath.Join(TmpDir(projectDir), version)
+}
+
+func SuggestionsDir(projectDir string) string {
+	return filepath.Join(projectDir, SuggestionDirName)
+}
+
+func SuggestionPath(projectDir, version string) string {
+	return filepath.Join(SuggestionsDir(projectDir), version+".md")
+}
+
 func CurrentVersionPath(projectDir string) string {
 	return filepath.Join(projectDir, CurrentFileName)
 }
@@ -54,6 +67,7 @@ func EnsureProjectLayout(projectDir string) error {
 		VersionsDir(projectDir),
 		VersionDir(projectDir, DefaultVersion),
 		TmpDir(projectDir),
+		SuggestionsDir(projectDir),
 	}
 
 	for _, p := range paths {
@@ -86,16 +100,29 @@ func WriteCurrentVersion(projectDir, version string) error {
 
 func HasTmp(projectDir string) bool {
 	entries, err := os.ReadDir(TmpDir(projectDir))
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			return true
+		}
+	}
+	return false
+}
+
+func HasTmpVersion(projectDir, version string) bool {
+	entries, err := os.ReadDir(TmpVersionDir(projectDir, version))
 	return err == nil && len(entries) > 0
 }
 
 func EnsureTmpFromVersion(projectDir, version string) error {
-	if HasTmp(projectDir) {
+	if HasTmpVersion(projectDir, version) {
 		return nil
 	}
 
 	src := VersionDir(projectDir, version)
-	dst := TmpDir(projectDir)
+	dst := TmpVersionDir(projectDir, version)
 	if err := os.RemoveAll(dst); err != nil {
 		return err
 	}
@@ -105,8 +132,8 @@ func EnsureTmpFromVersion(projectDir, version string) error {
 	return CopyDir(src, dst)
 }
 
-func SaveTmpToVersion(projectDir, toVersion string) error {
-	src := TmpDir(projectDir)
+func SaveTmpToVersion(projectDir, fromVersion, toVersion string) error {
+	src := TmpVersionDir(projectDir, fromVersion)
 	dst := VersionDir(projectDir, toVersion)
 	if err := os.RemoveAll(dst); err != nil {
 		return err
@@ -117,12 +144,12 @@ func SaveTmpToVersion(projectDir, toVersion string) error {
 	return CopyDir(src, dst)
 }
 
-func ClearTmp(projectDir string) error {
-	dst := TmpDir(projectDir)
+func ClearTmp(projectDir, version string) error {
+	dst := TmpVersionDir(projectDir, version)
 	if err := os.RemoveAll(dst); err != nil {
 		return err
 	}
-	return os.MkdirAll(dst, os.ModePerm)
+	return nil
 }
 
 func CreateVersionFromCurrent(projectDir, currentVersion, newVersion string) error {

@@ -1,8 +1,55 @@
 services:
+  mysql:
+    image: mysql:8.4
+    container_name: industrial-fault-tree-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-industrial_fault_tree_ai}
+      MYSQL_USER: ${MYSQL_USER:-app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-app123456}
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD:-root123456}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.2
+    container_name: industrial-fault-tree-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-redis123456}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis123456}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
   consul:
     image: consul:1.15.4
+    container_name: industrial-fault-tree-consul
+    restart: unless-stopped
+    command: agent -server -bootstrap-expect=1 -ui -client=0.0.0.0
     ports:
       - "8500:8500"
+      - "8600:8600/udp"
+    volumes:
+      - consul_data:/consul/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8500/v1/status/leader"]
       interval: 5s
@@ -11,25 +58,54 @@ services:
 
   etcd:
     image: quay.io/coreos/etcd:v3.5.5
+    container_name: industrial-fault-tree-etcd
+    restart: unless-stopped
+    environment:
+      ETCDCTL_API: "3"
     command: >
-      etcd
-      -advertise-client-urls=http://127.0.0.1:2379
-      -listen-client-urls=http://0.0.0.0:2379
-      --data-dir /etcd
+      /usr/local/bin/etcd
+      --name etcd
+      --data-dir /etcd-data
+      --advertise-client-urls http://etcd:2379
+      --listen-client-urls http://0.0.0.0:2379
+      --initial-advertise-peer-urls http://etcd:2380
+      --listen-peer-urls http://0.0.0.0:2380
+      --initial-cluster etcd=http://etcd:2380
+      --initial-cluster-state new
+      --initial-cluster-token etcd-cluster-1
     ports:
       - "2379:2379"
+    volumes:
+      - etcd_data:/etcd-data
+    healthcheck:
+      test: ["CMD-SHELL", "etcdctl --endpoints=http://127.0.0.1:2379 endpoint health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
 
   minio:
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
-    command: minio server /minio_data
+    container_name: industrial-fault-tree-minio
+    restart: unless-stopped
+    command: minio server /minio_data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
     ports:
       - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/minio_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
 
   milvus-standalone:
     image: milvusdb/milvus:v2.4.4
+    container_name: industrial-fault-tree-milvus
+    restart: unless-stopped
     command: ["milvus", "run", "standalone"]
     environment:
       ETCD_ENDPOINTS: etcd:2379
@@ -38,8 +114,29 @@ services:
     ports:
       - "19530:19530"
       - "9091:9091"
+    volumes:
+      - milvus_data:/var/lib/milvus
     depends_on:
       etcd:
         condition: service_started
       minio:
         condition: service_started
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.58
+    container_name: industrial-fault-tree-jaeger
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+
+volumes:
+  mysql_data:
+  redis_data:
+  consul_data:
+  etcd_data:
+  minio_data:
+  milvus_data:

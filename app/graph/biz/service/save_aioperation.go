@@ -40,7 +40,7 @@ func (s *SaveOperationService) Run(req *graph.SaveReq) (resp *graph.SaveResp, er
 	if toVersion == "" {
 		toVersion = fromVersion
 	}
-	if !utils.HasTmp(item.ProjectDir) {
+	if !utils.HasTmpVersion(item.ProjectDir, fromVersion) {
 		return &graph.SaveResp{
 			Success:     false,
 			FromVersion: fromVersion,
@@ -48,13 +48,13 @@ func (s *SaveOperationService) Run(req *graph.SaveReq) (resp *graph.SaveResp, er
 			Message:     "tmp not ready",
 		}, nil
 	}
-	if err := utils.SaveTmpToVersion(item.ProjectDir, toVersion); err != nil {
+	if err := utils.SaveTmpToVersion(item.ProjectDir, fromVersion, toVersion); err != nil {
 		return nil, err
 	}
 	if err := utils.WriteCurrentVersion(item.ProjectDir, toVersion); err != nil {
 		return nil, err
 	}
-	if err := utils.ClearTmp(item.ProjectDir); err != nil {
+	if err := utils.ClearTmp(item.ProjectDir, fromVersion); err != nil {
 		return nil, err
 	}
 
