@@ -43,7 +43,7 @@ func (h *UploadProjectDocumentService) Run(req *document.UploadProjectDocumentRe
 	}
 	_, err = rpc.DocumentClient.ParseProjectPDF(h.Context, &rpcdocument.ParseProjectPDFReq{
 		ProjectId: strconv.FormatInt(req.GraphId, 10),
-		PdfId: pdfID, FileName: req.FileName, DisplayName: req.FileName,
+		PdfId:     pdfID, FileName: req.FileName, DisplayName: req.FileName,
 	})
 	if err != nil {
 		return &document.BaseResponseBoolean{Code: 1, Message: err.Error()}, err

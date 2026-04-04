@@ -3,9 +3,6 @@ package service
 import (
 	"context"
 
-	"github.com/MoScenix/industrial-fault-tree-ai/app/graph/biz/dal/mysql"
-	"github.com/MoScenix/industrial-fault-tree-ai/app/graph/biz/dal/redis"
-	"github.com/MoScenix/industrial-fault-tree-ai/app/graph/biz/model"
 	"github.com/MoScenix/industrial-fault-tree-ai/app/graph/utils"
 	graph "github.com/MoScenix/industrial-fault-tree-ai/rpc_gen/kitex_gen/graph"
 )
@@ -19,12 +16,7 @@ func NewRenameVersionService(ctx context.Context) *RenameVersionService {
 
 // Run create note info
 func (s *RenameVersionService) Run(req *graph.RenameVersionReq) (resp *graph.RenameVersionResp, err error) {
-	if mysql.DB == nil {
-		return nil, errDBNotReady
-	}
-
-	q := model.NewGraphProQuery(s.ctx, mysql.DB, redis.RedisClient)
-	item, err := q.GetGraphByID(uint(req.GraphId))
+	item, err := mustLoadAuthorizedGraph(s.ctx, req.GraphId)
 	if err != nil {
 		return nil, err
 	}

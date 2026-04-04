@@ -59,6 +59,11 @@ func (x *GraphInfo) FastRead(buf []byte, _type int8, number int32) (offset int, 
 		if err != nil {
 			goto ReadFieldError
 		}
+	case 10:
+		offset, err = x.fastReadField10(buf, _type)
+		if err != nil {
+			goto ReadFieldError
+		}
 	default:
 		offset, err = fastpb.Skip(buf, _type, number)
 		if err != nil {
@@ -114,6 +119,11 @@ func (x *GraphInfo) fastReadField8(buf []byte, _type int8) (offset int, err erro
 
 func (x *GraphInfo) fastReadField9(buf []byte, _type int8) (offset int, err error) {
 	x.UpdateTime, offset, err = fastpb.ReadString(buf, _type)
+	return offset, err
+}
+
+func (x *GraphInfo) fastReadField10(buf []byte, _type int8) (offset int, err error) {
+	x.ProjectDir, offset, err = fastpb.ReadString(buf, _type)
 	return offset, err
 }
 
@@ -1290,6 +1300,7 @@ func (x *GraphInfo) FastWrite(buf []byte) (offset int) {
 	offset += x.fastWriteField7(buf[offset:])
 	offset += x.fastWriteField8(buf[offset:])
 	offset += x.fastWriteField9(buf[offset:])
+	offset += x.fastWriteField10(buf[offset:])
 	return offset
 }
 
@@ -1362,6 +1373,14 @@ func (x *GraphInfo) fastWriteField9(buf []byte) (offset int) {
 		return offset
 	}
 	offset += fastpb.WriteString(buf[offset:], 9, x.GetUpdateTime())
+	return offset
+}
+
+func (x *GraphInfo) fastWriteField10(buf []byte) (offset int) {
+	if x.ProjectDir == "" {
+		return offset
+	}
+	offset += fastpb.WriteString(buf[offset:], 10, x.GetProjectDir())
 	return offset
 }
 
@@ -2228,6 +2247,7 @@ func (x *GraphInfo) Size() (n int) {
 	n += x.sizeField7()
 	n += x.sizeField8()
 	n += x.sizeField9()
+	n += x.sizeField10()
 	return n
 }
 
@@ -2300,6 +2320,14 @@ func (x *GraphInfo) sizeField9() (n int) {
 		return n
 	}
 	n += fastpb.SizeString(9, x.GetUpdateTime())
+	return n
+}
+
+func (x *GraphInfo) sizeField10() (n int) {
+	if x.ProjectDir == "" {
+		return n
+	}
+	n += fastpb.SizeString(10, x.GetProjectDir())
 	return n
 }
 
@@ -3154,15 +3182,16 @@ func (x *ListVersionResp) sizeField1() (n int) {
 }
 
 var fieldIDToName_GraphInfo = map[int32]string{
-	1: "Id",
-	2: "GraphName",
-	3: "Description",
-	4: "Cover",
-	5: "UserId",
-	6: "CurrentVersion",
-	7: "HasTmp",
-	8: "CreateTime",
-	9: "UpdateTime",
+	1:  "Id",
+	2:  "GraphName",
+	3:  "Description",
+	4:  "Cover",
+	5:  "UserId",
+	6:  "CurrentVersion",
+	7:  "HasTmp",
+	8:  "CreateTime",
+	9:  "UpdateTime",
+	10: "ProjectDir",
 }
 
 var fieldIDToName_GraphVersionInfo = map[int32]string{

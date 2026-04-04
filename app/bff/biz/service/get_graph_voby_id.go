@@ -19,9 +19,6 @@ func NewGetGraphVOByIdService(Context context.Context, RequestContext *app.Reque
 }
 
 func (h *GetGraphVOByIdService) Run(req *graph.GetGraphVOByIdRequest) (resp *graph.BaseResponseGraphVO, err error) {
-	if _, err := loadAuthorizedGraphRecord(h.Context, req.Id); err != nil {
-		return &graph.BaseResponseGraphVO{Code: 1, Message: graphAccessError(err).Error()}, nil
-	}
 	res, err := rpc.GraphClient.GetGraph(h.Context, &rpcgraph.GetGraphReq{Id: req.Id})
 	if err != nil {
 		return &graph.BaseResponseGraphVO{Code: 1, Message: err.Error()}, err

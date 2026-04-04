@@ -19,9 +19,6 @@ func NewUpdateGraphService(Context context.Context, RequestContext *app.RequestC
 }
 
 func (h *UpdateGraphService) Run(req *graph.GraphUpdateRequest) (resp *graph.BaseResponseBoolean, err error) {
-	if _, err := loadAuthorizedGraphRecord(h.Context, req.Id); err != nil {
-		return &graph.BaseResponseBoolean{Code: 1, Message: graphAccessError(err).Error()}, nil
-	}
 	res, err := rpc.GraphClient.UpdateGraph(h.Context, &rpcgraph.UpdateGraphReq{
 		Id:          req.Id,
 		GraphName:   req.GraphName,

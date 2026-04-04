@@ -14,6 +14,7 @@ message GraphInfo {
   bool has_tmp = 7;
   string create_time = 8;
   string update_time = 9;
+  string project_dir = 10;
 }
 
 message GraphVersionInfo {

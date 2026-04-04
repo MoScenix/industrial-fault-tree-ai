@@ -3,8 +3,6 @@ package service
 import (
 	"context"
 
-	"github.com/MoScenix/industrial-fault-tree-ai/app/graph/biz/dal/mysql"
-	"github.com/MoScenix/industrial-fault-tree-ai/app/graph/biz/dal/redis"
 	"github.com/MoScenix/industrial-fault-tree-ai/app/graph/biz/model"
 	"github.com/MoScenix/industrial-fault-tree-ai/app/graph/utils"
 	graph "github.com/MoScenix/industrial-fault-tree-ai/rpc_gen/kitex_gen/graph"
@@ -19,8 +17,13 @@ func NewAddGraphService(ctx context.Context) *AddGraphService {
 
 // Run create note info
 func (s *AddGraphService) Run(req *graph.AddGraphReq) (resp *graph.AddGraphResp, err error) {
-	if mysql.DB == nil {
-		return nil, errDBNotReady
+	userID, err := ensureLogin(s.ctx)
+	if err != nil {
+		return nil, err
+	}
+	q, err := graphQuery(s.ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	projectUUID := utils.NewProjectUUID()
@@ -30,11 +33,11 @@ func (s *AddGraphService) Run(req *graph.AddGraphReq) (resp *graph.AddGraphResp,
 		graphName = "未命名图项目"
 	}
 
-	res, err := model.NewGraphProQuery(s.ctx, mysql.DB, redis.RedisClient).CreateGraph(model.Graph{
+	res, err := q.CreateGraph(model.Graph{
 		GraphName:   graphName,
 		Description: req.Description,
 		Cover:       req.Cover,
-		UserID:      uint(req.UserId),
+		UserID:      uint(userID),
 		ProjectUUID: projectUUID,
 		ProjectDir:  projectDir,
 	})
@@ -43,7 +46,7 @@ func (s *AddGraphService) Run(req *graph.AddGraphReq) (resp *graph.AddGraphResp,
 	}
 
 	if err := utils.EnsureProjectLayout(projectDir); err != nil {
-		_ = model.NewGraphProQuery(s.ctx, mysql.DB, redis.RedisClient).DeleteGraph(res.ID)
+		_ = q.DeleteGraph(res.ID)
 		return nil, err
 	}
 

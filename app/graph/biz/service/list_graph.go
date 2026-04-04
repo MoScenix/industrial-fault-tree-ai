@@ -3,9 +3,6 @@ package service
 import (
 	"context"
 
-	"github.com/MoScenix/industrial-fault-tree-ai/app/graph/biz/dal/mysql"
-	"github.com/MoScenix/industrial-fault-tree-ai/app/graph/biz/dal/redis"
-	"github.com/MoScenix/industrial-fault-tree-ai/app/graph/biz/model"
 	graph "github.com/MoScenix/industrial-fault-tree-ai/rpc_gen/kitex_gen/graph"
 )
 
@@ -18,17 +15,20 @@ func NewListGraphService(ctx context.Context) *ListGraphService {
 
 // Run create note info
 func (s *ListGraphService) Run(req *graph.ListGraphReq) (resp *graph.ListGraphResp, err error) {
-	if mysql.DB == nil {
-		return nil, errDBNotReady
+	userID, err := effectiveListUserID(s.ctx, req.UserId)
+	if err != nil {
+		return nil, err
 	}
-
-	q := model.NewGraphProQuery(s.ctx, mysql.DB, redis.RedisClient)
-	total, err := q.CountGraph(uint(req.UserId), req.GraphName)
+	q, err := graphQuery(s.ctx)
+	if err != nil {
+		return nil, err
+	}
+	total, err := q.CountGraph(userID, req.GraphName)
 	if err != nil {
 		return nil, err
 	}
 
-	items, err := q.ListGraph(uint32(req.PageNum), uint(req.UserId), req.GraphName, uint32(req.PageSize))
+	items, err := q.ListGraph(uint32(req.PageNum), userID, req.GraphName, uint32(req.PageSize))
 	if err != nil {
 		return nil, err
 	}

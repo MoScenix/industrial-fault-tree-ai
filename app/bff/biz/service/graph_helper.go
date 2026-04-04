@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -11,40 +12,23 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/MoScenix/industrial-fault-tree-ai/app/bff/biz/dal/mysql"
 	lutils "github.com/MoScenix/industrial-fault-tree-ai/app/bff/biz/utils"
 	graphbff "github.com/MoScenix/industrial-fault-tree-ai/app/bff/hertz_gen/bff/graph"
+	"github.com/MoScenix/industrial-fault-tree-ai/app/bff/infra/rpc"
+	rpcgraph "github.com/MoScenix/industrial-fault-tree-ai/rpc_gen/kitex_gen/graph"
 )
 
-var errGraphNotFound = errors.New("graph not found")
-var errUnauthorizedGraphAccess = errors.New("no permission to access this graph")
 var errUnauthorized = errors.New("unauthorized")
 
 type graphRecord struct {
-	ID          uint      `gorm:"column:id"`
-	GraphName   string    `gorm:"column:graph_name"`
-	Description string    `gorm:"column:description"`
-	Cover       string    `gorm:"column:cover"`
-	UserID      uint      `gorm:"column:user_id"`
-	ProjectUUID string    `gorm:"column:project_uuid"`
-	ProjectDir  string    `gorm:"column:project_dir"`
-	CreatedAt   time.Time `gorm:"column:created_at"`
-	UpdatedAt   time.Time `gorm:"column:updated_at"`
-}
-
-func (graphRecord) TableName() string {
-	return "graphs"
-}
-
-func loadGraphRecord(id int64) (*graphRecord, error) {
-	if mysql.DB == nil {
-		return nil, errDBNotReady
-	}
-	var item graphRecord
-	if err := mysql.DB.Where("id = ?", id).First(&item).Error; err != nil {
-		return nil, err
-	}
-	return &item, nil
+	ID          int64
+	GraphName   string
+	Description string
+	Cover       string
+	UserID      int64
+	ProjectDir  string
+	CreateTime  string
+	UpdateTime  string
 }
 
 func currentUserIDFromContext(ctx any) (int64, bool) {
@@ -90,36 +74,37 @@ func ensureLogin(ctx interface{ Value(key any) any }) error {
 	return nil
 }
 
-func loadAuthorizedGraphRecord(ctx interface{ Value(key any) any }, graphID int64) (*graphRecord, error) {
+func loadAuthorizedGraphRecord(ctx context.Context, graphID int64) (*graphRecord, error) {
 	if err := ensureLogin(ctx); err != nil {
 		return nil, err
 	}
-	item, err := loadGraphRecord(graphID)
+	resp, err := rpc.GraphClient.GetGraph(ctx, &rpcgraph.GetGraphReq{Id: graphID})
 	if err != nil {
 		return nil, err
 	}
-	if isAdmin(ctx) {
-		return item, nil
+	if resp == nil || resp.Graph == nil {
+		return nil, fmt.Errorf("graph not found")
 	}
-	userID, _ := getCurrentUserID(ctx)
-	if item.UserID != uint(userID) {
-		return nil, errUnauthorizedGraphAccess
-	}
-	return item, nil
+	return &graphRecord{
+		ID:          resp.Graph.Id,
+		GraphName:   resp.Graph.GraphName,
+		Description: resp.Graph.Description,
+		Cover:       resp.Graph.Cover,
+		UserID:      resp.Graph.UserId,
+		ProjectDir:  resp.Graph.ProjectDir,
+		CreateTime:  resp.Graph.CreateTime,
+		UpdateTime:  resp.Graph.UpdateTime,
+	}, nil
 }
 
 func graphAccessError(err error) error {
 	if err == nil {
 		return nil
 	}
-	switch {
-	case errors.Is(err, errUnauthorized):
+	if errors.Is(err, errUnauthorized) {
 		return fmt.Errorf("请先登录")
-	case errors.Is(err, errUnauthorizedGraphAccess):
-		return fmt.Errorf("无权操作该项目")
-	default:
-		return err
 	}
+	return err
 }
 
 func currentVersion(projectDir string) string {
@@ -179,15 +164,15 @@ func readOptionalFile(path string) (string, time.Time, error) {
 
 func toGraphVO(item *graphRecord) *graphbff.GraphVO {
 	return &graphbff.GraphVO{
-		Id:             int64(item.ID),
+		Id:             item.ID,
 		GraphName:      item.GraphName,
 		Description:    item.Description,
 		Cover:          item.Cover,
-		UserId:         int64(item.UserID),
+		UserId:         item.UserID,
 		CurrentVersion: currentVersion(item.ProjectDir),
 		HasTmp:         hasTmp(item.ProjectDir),
-		CreateTime:     item.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdateTime:     item.UpdatedAt.Format("2006-01-02 15:04:05"),
+		CreateTime:     item.CreateTime,
+		UpdateTime:     item.UpdateTime,
 	}
 }
 

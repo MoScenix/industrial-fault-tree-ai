@@ -18,6 +18,7 @@ func toGraphInfo(item model.Graph) *graphpb.GraphInfo {
 		HasTmp:         utils.HasTmp(item.ProjectDir),
 		CreateTime:     utils.FormatTime(item.CreatedAt),
 		UpdateTime:     utils.FormatTime(item.UpdatedAt),
+		ProjectDir:     item.ProjectDir,
 	}
 }
 

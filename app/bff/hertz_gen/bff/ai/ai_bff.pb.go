@@ -7,11 +7,12 @@
 package ai
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	_ "github.com/MoScenix/industrial-fault-tree-ai/app/bff/hertz_gen/api"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -26,7 +27,7 @@ type BaseResponseBoolean struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Code    int32  `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty" form:"code" query:"code"`
+	Code    int32  `protobuf:"varint,1,opt,name=code,proto3" json:"code" form:"code" query:"code"`
 	Data    bool   `protobuf:"varint,2,opt,name=data,proto3" json:"data,omitempty" form:"data" query:"data"`
 	Message string `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty" form:"message" query:"message"`
 }
@@ -89,7 +90,7 @@ type BaseResponsePromptVO struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Code    int32     `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty" form:"code" query:"code"`
+	Code    int32     `protobuf:"varint,1,opt,name=code,proto3" json:"code" form:"code" query:"code"`
 	Data    *PromptVO `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty" form:"data" query:"data"`
 	Message string    `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty" form:"message" query:"message"`
 }

@@ -19,9 +19,6 @@ func NewStartEditService(Context context.Context, RequestContext *app.RequestCon
 }
 
 func (h *StartEditService) Run(req *graph.StartEditRequest) (resp *graph.BaseResponseGraphEditState, err error) {
-	if _, err := loadAuthorizedGraphRecord(h.Context, req.GraphId); err != nil {
-		return &graph.BaseResponseGraphEditState{Code: 1, Message: graphAccessError(err).Error()}, nil
-	}
 	res, err := rpc.GraphClient.StartEdit(h.Context, &rpcgraph.StartEditReq{
 		GraphId: req.GraphId,
 		Version: req.Version,

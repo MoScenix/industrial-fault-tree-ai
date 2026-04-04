@@ -33,9 +33,9 @@ func (h *GetCurrentSuggestionService) Run(req *graph.GetCurrentSuggestionRequest
 		Code:    0,
 		Message: "success",
 		Data: &graph.GraphSuggestionVO{
-			GraphId:    req.GraphId,
-			Version:    version,
-			Content:    content,
+			GraphId: req.GraphId,
+			Version: version,
+			Content: content,
 			UpdateTime: func() string {
 				if updateTime.IsZero() {
 					return ""

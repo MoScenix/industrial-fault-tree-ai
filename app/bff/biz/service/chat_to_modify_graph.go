@@ -22,11 +22,8 @@ func NewChatToModifyGraphService(Context context.Context, RequestContext *app.Re
 }
 
 func (h *ChatToModifyGraphService) Run(req *graph.ChatToModifyGraphRequest) (resp *graph.ServerSentEventString, err error) {
-	if _, err := loadAuthorizedGraphRecord(h.Context, req.GraphId); err != nil {
-		return &graph.ServerSentEventString{Message: graphAccessError(err).Error()}, nil
-	}
 	messageResp, err := rpc.GraphClient.ListGraphMessage(h.Context, &rpcgraph.ListGraphMessageReq{
-		GraphId: req.GraphId,
+		GraphId:  req.GraphId,
 		PageSize: 20,
 	})
 	if err != nil {
@@ -40,7 +37,7 @@ func (h *ChatToModifyGraphService) Run(req *graph.ChatToModifyGraphRequest) (res
 	history = append(history, &rpcai.HistoryItem{Role: "user", Content: req.Message})
 	stream, err := rpc.AiClient.Chat(h.Context, &rpcai.ChatReq{
 		ProjectId: strconv.FormatInt(req.GraphId, 10),
-		History: history,
+		History:   history,
 	})
 	if err != nil {
 		return &graph.ServerSentEventString{Message: err.Error()}, err

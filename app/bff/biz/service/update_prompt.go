@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	aibff "github.com/MoScenix/industrial-fault-tree-ai/app/bff/hertz_gen/bff/ai"
 	lutils "github.com/MoScenix/industrial-fault-tree-ai/app/bff/biz/utils"
+	aibff "github.com/MoScenix/industrial-fault-tree-ai/app/bff/hertz_gen/bff/ai"
 	"github.com/MoScenix/industrial-fault-tree-ai/app/bff/infra/rpc"
 	rpcai "github.com/MoScenix/industrial-fault-tree-ai/rpc_gen/kitex_gen/ai"
 	"github.com/cloudwego/hertz/pkg/app"

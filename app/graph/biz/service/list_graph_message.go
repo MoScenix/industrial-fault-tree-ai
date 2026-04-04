@@ -22,6 +22,9 @@ func (s *ListGraphMessageService) Run(req *graph.ListGraphMessageReq) (resp *gra
 	if mysql.DB == nil {
 		return nil, errDBNotReady
 	}
+	if _, err := mustLoadAuthorizedGraph(s.ctx, req.GraphId); err != nil {
+		return nil, err
+	}
 
 	q := model.NewMessageProQuery(s.ctx, mysql.DB, redis.RedisClient)
 	pageSize := int(req.PageSize)

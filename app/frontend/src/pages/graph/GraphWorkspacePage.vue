@@ -13,8 +13,7 @@
         </div>
       </div>
       <a-space wrap>
-        <a-button type="primary" @click="saveCurrent">保存</a-button>
-        <a-button @click="prepareEdit">准备暂存</a-button>
+        <a-button type="primary" @click="openSaveModal">保存</a-button>
         <a-upload :show-upload-list="false" accept=".pdf" :before-upload="beforeUploadProjectDoc">
           <a-button>上传项目文档</a-button>
         </a-upload>
@@ -120,13 +119,13 @@
             </a-tag>
             <span class="meta-text">创建者：{{ graphInfo?.userId || '-' }}</span>
             <span class="meta-text">
-              {{ workingGraph?.isTmp ? '保存将直接提交后端暂存内容' : '保存会先把当前编辑内容写入暂存，再提交版本' }}
+              {{ workingGraph?.isTmp ? '打开页面后系统已自动创建该版本的编辑副本' : '当前展示的是目录版本，只读展示' }}
             </span>
           </div>
           <div class="canvas-meta">
             <span class="meta-text">节点 {{ flowNodes.length }}</span>
             <span class="meta-text">边 {{ flowEdges.length }}</span>
-            <span class="meta-text">{{ isEditorDirty ? '未保存修改' : '已同步当前展示内容' }}</span>
+            <span v-if="isEditorDirty" class="meta-text">未保存修改</span>
           </div>
         </div>
 
@@ -188,11 +187,29 @@
     >
       <a-input v-model:value="versionDraft" placeholder="输入新的版本名称" />
     </a-modal>
+
+    <a-modal
+      v-model:open="showSaveModal"
+      title="保存版本"
+      ok-text="保存"
+      cancel-text="取消"
+      @ok="saveCurrent"
+    >
+      <a-radio-group v-model:value="saveMode" style="margin-bottom: 16px">
+        <a-radio value="overwrite">覆盖当前版本</a-radio>
+        <a-radio value="new">新建版本保存</a-radio>
+      </a-radio-group>
+      <a-input
+        v-if="saveMode === 'new'"
+        v-model:value="saveVersionName"
+        placeholder="输入新版本名称，例如：v002 或 优化版"
+      />
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import type { Connection, Edge, Node } from '@vue-flow/core'
@@ -249,9 +266,13 @@ const chatInput = ref('')
 const chatting = ref(false)
 const showCreateVersionModal = ref(false)
 const showRenameVersionModal = ref(false)
+const showSaveModal = ref(false)
 const versionDraft = ref('')
 const editingVersion = ref<API.GraphVersionVO>()
 const showJsonEditor = ref(false)
+const saveMode = ref<'overwrite' | 'new'>('overwrite')
+const saveVersionName = ref('')
+let draftSyncTimer: ReturnType<typeof setTimeout> | undefined
 
 const panelItems = [
   { key: 'chat', label: '对话', icon: CommentOutlined },
@@ -267,6 +288,9 @@ const panelMeta = {
 
 const currentVersionLabel = computed(
   () => selectedVersion.value || graphInfo.value?.currentVersion || 'v001',
+)
+const draftCacheKey = computed(
+  () => `graph-workspace:${graphId}:${currentVersionLabel.value || 'v001'}`,
 )
 const currentPanelMeta = computed(() => {
   if (activePanel.value && panelMeta[activePanel.value]) {
@@ -436,6 +460,45 @@ const markDirty = () => {
   workingContent.value = JSON.stringify(exportGraphModel(), null, 2)
 }
 
+const persistDraftCache = () => {
+  if (!workingContent.value || !isEditorDirty.value) return
+  localStorage.setItem(
+    draftCacheKey.value,
+    JSON.stringify({
+      content: workingContent.value,
+      updatedAt: new Date().toISOString(),
+    }),
+  )
+}
+
+const clearDraftCache = () => {
+  localStorage.removeItem(draftCacheKey.value)
+}
+
+const scheduleDraftSync = () => {
+  if (draftSyncTimer) clearTimeout(draftSyncTimer)
+  draftSyncTimer = setTimeout(() => {
+    persistDraftCache()
+  }, 3000)
+}
+
+const restoreDraftCache = () => {
+  const raw = localStorage.getItem(draftCacheKey.value)
+  if (!raw) return false
+  try {
+    const parsed = JSON.parse(raw)
+    if (parsed?.content) {
+      parseGraphContent(parsed.content)
+      isEditorDirty.value = true
+      message.info('已恢复当前版本的本地缓存编辑内容')
+      return true
+    }
+  } catch {
+    localStorage.removeItem(draftCacheKey.value)
+  }
+  return false
+}
+
 const loadGraphInfo = async () => {
   const res = await getGraphVoById({ id: graphId })
   if (res.data.code === 0) {
@@ -454,10 +517,14 @@ const loadVersions = async () => {
 }
 
 const loadWorkingGraph = async () => {
+  workingContent.value = ''
   const res = await getWorkingGraph({ graphId, version: selectedVersion.value })
   if (res.data.code === 0 && res.data.data) {
     workingGraph.value = res.data.data
     parseGraphContent(res.data.data.content || '')
+    restoreDraftCache()
+  } else {
+    message.error(res.data.message || '获取当前工作图失败')
   }
 }
 
@@ -477,31 +544,37 @@ const loadMessages = async () => {
 
 const refreshAll = async () => {
   await Promise.all([loadGraphInfo(), loadVersions()])
+  await ensureEditReady()
   await Promise.all([loadWorkingGraph(), loadSuggestion(), loadMessages()])
 }
 
 const switchVersion = async (version?: string) => {
   selectedVersion.value = version || graphInfo.value?.currentVersion || 'v001'
+  await ensureEditReady()
   await Promise.all([loadWorkingGraph(), loadSuggestion()])
 }
 
-const prepareEdit = async () => {
+const ensureEditReady = async () => {
   const res = await startEdit({
     graphId,
     version: selectedVersion.value || graphInfo.value?.currentVersion || 'v001',
   })
-  if (res.data.code === 0) {
-    message.success(res.data.data?.message || '已准备暂存编辑')
-    await refreshAll()
-  } else {
-    message.error(res.data.message || '准备编辑失败')
+  if (res.data.code !== 0) {
+    throw new Error(res.data.message || '自动准备编辑副本失败')
   }
 }
 
+const openSaveModal = () => {
+  saveMode.value = 'overwrite'
+  saveVersionName.value = ''
+  showSaveModal.value = true
+}
+
 const discardTmp = async () => {
-  const res = await discardWorkingGraph({ graphId })
+  const res = await discardWorkingGraph({ graphId, version: selectedVersion.value })
   if (res.data.code === 0) {
     message.success('已放弃当前暂存内容')
+    clearDraftCache()
     await refreshAll()
   } else {
     message.error(res.data.message || '放弃暂存失败')
@@ -510,19 +583,29 @@ const discardTmp = async () => {
 
 const saveCurrent = async () => {
   const fromVersion = currentVersionLabel.value
+  const toVersion = saveMode.value === 'new' ? saveVersionName.value.trim() : fromVersion
+  if (!toVersion) {
+    message.warning('请输入目标版本名称')
+    return
+  }
   const content = JSON.stringify(exportGraphModel(), null, 2)
   workingContent.value = content
   const useTmp = !isEditorDirty.value && Boolean(workingGraph.value?.isTmp)
   const res = await saveGraph({
     graphId,
     fromVersion,
-    toVersion: fromVersion,
+    toVersion,
     remark: '前端工作台保存',
     useTmp,
     content: useTmp ? '' : content,
   })
   if (res.data.code === 0) {
     message.success(res.data.data?.message || '保存成功')
+    showSaveModal.value = false
+    clearDraftCache()
+    if (saveMode.value === 'new') {
+      selectedVersion.value = toVersion
+    }
     await refreshAll()
   } else {
     message.error(res.data.message || '保存失败')
@@ -622,6 +705,7 @@ const beforeImportGraph = async (file: File) => {
   const text = await file.text()
   parseGraphContent(text)
   isEditorDirty.value = true
+  scheduleDraftSync()
   message.success('图文件已导入到当前编辑器')
   return false
 }
@@ -642,6 +726,7 @@ const handleJsonEdited = () => {
     JSON.parse(workingContent.value)
     parseGraphContent(workingContent.value)
     isEditorDirty.value = true
+    scheduleDraftSync()
   } catch (error) {
     console.error(error)
     message.warning('JSON 格式暂时不合法，先检查内容再继续')
@@ -688,9 +773,21 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (draftSyncTimer) {
+    clearTimeout(draftSyncTimer)
+  }
   window.removeEventListener('mousemove', handleMouseMove)
   window.removeEventListener('mouseup', stopResize)
 })
+
+watch(
+  [flowNodes, flowEdges],
+  () => {
+    if (!workingGraph.value || !isEditorDirty.value) return
+    scheduleDraftSync()
+  },
+  { deep: true },
+)
 </script>
 
 <style scoped>

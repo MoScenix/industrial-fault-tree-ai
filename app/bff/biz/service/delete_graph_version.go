@@ -19,9 +19,6 @@ func NewDeleteGraphVersionService(Context context.Context, RequestContext *app.R
 }
 
 func (h *DeleteGraphVersionService) Run(req *graph.DeleteGraphVersionRequest) (resp *graph.BaseResponseBoolean, err error) {
-	if _, err := loadAuthorizedGraphRecord(h.Context, req.GraphId); err != nil {
-		return &graph.BaseResponseBoolean{Code: 1, Message: graphAccessError(err).Error()}, nil
-	}
 	res, err := rpc.GraphClient.DeleteVersion(h.Context, &rpcgraph.DeleteVersionReq{
 		GraphId: req.GraphId, Version: req.Version,
 	})

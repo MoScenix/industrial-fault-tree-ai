@@ -19,9 +19,6 @@ func NewDeleteGraphService(Context context.Context, RequestContext *app.RequestC
 }
 
 func (h *DeleteGraphService) Run(req *graph.DeleteRequest) (resp *graph.BaseResponseBoolean, err error) {
-	if _, err := loadAuthorizedGraphRecord(h.Context, req.Id); err != nil {
-		return &graph.BaseResponseBoolean{Code: 1, Message: graphAccessError(err).Error()}, nil
-	}
 	res, err := rpc.GraphClient.DeleteGraph(h.Context, &rpcgraph.DeleteGraphReq{Id: req.Id})
 	if err != nil {
 		return &graph.BaseResponseBoolean{Code: 1, Message: err.Error()}, err

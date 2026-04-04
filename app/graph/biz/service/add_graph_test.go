@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	"testing"
 	graph "github.com/MoScenix/industrial-fault-tree-ai/rpc_gen/kitex_gen/graph"
+	"testing"
 )
 
 func TestAddGraph_Run(t *testing.T) {

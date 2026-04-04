@@ -22,7 +22,10 @@ func (h *DiscardWorkingGraphService) Run(req *graph.DiscardWorkingGraphRequest) 
 	if err != nil {
 		return &graph.BaseResponseBoolean{Code: 1, Message: graphAccessError(err).Error()}, nil
 	}
-	version := currentVersion(item.ProjectDir)
+	version := req.Version
+	if version == "" {
+		version = currentVersion(item.ProjectDir)
+	}
 	if err := os.RemoveAll(tmpVersionDir(item.ProjectDir, version)); err != nil {
 		return &graph.BaseResponseBoolean{Code: 1, Message: err.Error()}, err
 	}

@@ -19,9 +19,6 @@ func NewCreateGraphVersionService(Context context.Context, RequestContext *app.R
 }
 
 func (h *CreateGraphVersionService) Run(req *graph.CreateGraphVersionRequest) (resp *graph.BaseResponseString, err error) {
-	if _, err := loadAuthorizedGraphRecord(h.Context, req.GraphId); err != nil {
-		return &graph.BaseResponseString{Code: 1, Message: graphAccessError(err).Error()}, nil
-	}
 	res, err := rpc.GraphClient.CreateVersion(h.Context, &rpcgraph.CreateVersionReq{
 		GraphId: req.GraphId, VersionName: req.VersionName,
 	})

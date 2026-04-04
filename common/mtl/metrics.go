@@ -1,6 +1,8 @@
 package mtl
 
 import (
+	"fmt"
+	"log"
 	"net"
 	"net/http"
 
@@ -20,9 +22,17 @@ func InitMetric(serviceName, MetricPort, registerAddr string) {
 	Registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	r, err := consul.NewConsulRegister(registerAddr)
 	if err != nil {
-		panic(err)
+		log.Printf("init prometheus consul register failed: %v", err)
+		startMetricHTTP(MetricPort)
+		return
 	}
 	addr, err := net.ResolveTCPAddr("tcp", MetricPort)
+	if err != nil {
+		fmt.Printf("resolve metric addr failed: %v", err)
+		log.Printf("resolve metric addr failed: %v", err)
+		startMetricHTTP(MetricPort)
+		return
+	}
 	registerInfo := &registry.Info{
 		ServiceName: "prometheus",
 		Weight:      1,
@@ -33,11 +43,19 @@ func InitMetric(serviceName, MetricPort, registerAddr string) {
 	}
 	err = r.Register(registerInfo)
 	if err != nil {
-		panic(err)
+		log.Printf("register prometheus service failed: %v", err)
 	}
 	server.RegisterShutdownHook(func() {
 		r.Deregister(registerInfo)
 	})
+	startMetricHTTP(MetricPort)
+}
+
+func startMetricHTTP(metricPort string) {
 	http.Handle("/metrics", promhttp.HandlerFor(Registry, promhttp.HandlerOpts{}))
-	go http.ListenAndServe(MetricPort, nil)
+	go func() {
+		if err := http.ListenAndServe(metricPort, nil); err != nil {
+			log.Printf("start metrics http failed: %v", err)
+		}
+	}()
 }

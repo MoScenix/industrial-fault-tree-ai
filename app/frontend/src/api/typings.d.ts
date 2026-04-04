@@ -122,6 +122,7 @@ declare namespace API {
 
   type DiscardWorkingGraphRequest = {
     graphId?: number
+    version?: string
   }
 
   type downloadGraphParams = {

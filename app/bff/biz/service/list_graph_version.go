@@ -19,9 +19,6 @@ func NewListGraphVersionService(Context context.Context, RequestContext *app.Req
 }
 
 func (h *ListGraphVersionService) Run(req *graph.ListGraphVersionRequest) (resp *graph.BaseResponsePageGraphVersionVO, err error) {
-	if _, err := loadAuthorizedGraphRecord(h.Context, req.GraphId); err != nil {
-		return &graph.BaseResponsePageGraphVersionVO{Code: 1, Message: graphAccessError(err).Error()}, nil
-	}
 	res, err := rpc.GraphClient.ListVersion(h.Context, &rpcgraph.ListVersionReq{GraphId: req.GraphId})
 	if err != nil {
 		return &graph.BaseResponsePageGraphVersionVO{Code: 1, Message: err.Error()}, err

@@ -21,6 +21,9 @@ func (s *AddGraphMessageService) Run(req *graph.AddGraphMessageReq) (*graph.AddG
 	if mysql.DB == nil {
 		return nil, errDBNotReady
 	}
+	if _, err := mustLoadAuthorizedGraph(s.ctx, req.GraphId); err != nil {
+		return nil, err
+	}
 
 	item, err := model.NewMessageProQuery(s.ctx, mysql.DB, redis.RedisClient).CreateMessage(model.Message{
 		GraphID: uint(req.GraphId),

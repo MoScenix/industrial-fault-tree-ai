@@ -19,9 +19,6 @@ func NewListGraphMessageService(Context context.Context, RequestContext *app.Req
 }
 
 func (h *ListGraphMessageService) Run(req *graph.ListGraphMessageRequest) (resp *graph.BaseResponsePageGraphMessageVO, err error) {
-	if _, err := loadAuthorizedGraphRecord(h.Context, req.GraphId); err != nil {
-		return &graph.BaseResponsePageGraphMessageVO{Code: 1, Message: graphAccessError(err).Error()}, nil
-	}
 	res, err := rpc.GraphClient.ListGraphMessage(h.Context, &rpcgraph.ListGraphMessageReq{
 		GraphId: req.GraphId, PageSize: req.PageSize, LastCreateTime: req.LastCreateTime,
 	})

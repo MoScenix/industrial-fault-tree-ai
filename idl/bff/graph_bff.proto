@@ -202,6 +202,7 @@ message GetCurrentSuggestionRequest {
 
 message DiscardWorkingGraphRequest {
   int64 graphId = 1;
+  string version = 2;
 }
 
 message SaveGraphRequest {

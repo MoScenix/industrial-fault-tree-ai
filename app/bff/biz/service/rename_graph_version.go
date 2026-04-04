@@ -19,9 +19,6 @@ func NewRenameGraphVersionService(Context context.Context, RequestContext *app.R
 }
 
 func (h *RenameGraphVersionService) Run(req *graph.RenameGraphVersionRequest) (resp *graph.BaseResponseBoolean, err error) {
-	if _, err := loadAuthorizedGraphRecord(h.Context, req.GraphId); err != nil {
-		return &graph.BaseResponseBoolean{Code: 1, Message: graphAccessError(err).Error()}, nil
-	}
 	res, err := rpc.GraphClient.RenameVersion(h.Context, &rpcgraph.RenameVersionReq{
 		GraphId: req.GraphId, Version: req.Version, VersionName: req.VersionName,
 	})

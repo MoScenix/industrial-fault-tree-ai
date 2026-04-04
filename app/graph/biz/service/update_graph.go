@@ -3,8 +3,6 @@ package service
 import (
 	"context"
 
-	"github.com/MoScenix/industrial-fault-tree-ai/app/graph/biz/dal/mysql"
-	"github.com/MoScenix/industrial-fault-tree-ai/app/graph/biz/dal/redis"
 	"github.com/MoScenix/industrial-fault-tree-ai/app/graph/biz/model"
 	graph "github.com/MoScenix/industrial-fault-tree-ai/rpc_gen/kitex_gen/graph"
 )
@@ -18,12 +16,11 @@ func NewUpdateGraphService(ctx context.Context) *UpdateGraphService {
 
 // Run create note info
 func (s *UpdateGraphService) Run(req *graph.UpdateGraphReq) (resp *graph.UpdateGraphResp, err error) {
-	if mysql.DB == nil {
-		return nil, errDBNotReady
+	current, err := mustLoadAuthorizedGraph(s.ctx, req.Id)
+	if err != nil {
+		return nil, err
 	}
-
-	q := model.NewGraphProQuery(s.ctx, mysql.DB, redis.RedisClient)
-	current, err := q.GetGraphByID(uint(req.Id))
+	q, err := graphQuery(s.ctx)
 	if err != nil {
 		return nil, err
 	}
