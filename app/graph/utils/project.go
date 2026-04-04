@@ -11,11 +11,11 @@ import (
 )
 
 const (
-	VersionsDirName = "versions"
-	TmpDirName      = "tmp"
+	VersionsDirName   = "versions"
+	TmpDirName        = "tmp"
 	SuggestionDirName = "suggestions"
-	CurrentFileName = "current"
-	DefaultVersion  = "v001"
+	CurrentFileName   = "current"
+	DefaultVersion    = "v001"
 )
 
 type VersionInfo struct {
@@ -114,6 +114,14 @@ func HasTmp(projectDir string) bool {
 func HasTmpVersion(projectDir, version string) bool {
 	entries, err := os.ReadDir(TmpVersionDir(projectDir, version))
 	return err == nil && len(entries) > 0
+}
+
+func HasTmpTree(projectDir, version string) bool {
+	info, err := os.Stat(filepath.Join(TmpVersionDir(projectDir, version), "tree.json"))
+	if err != nil {
+		return false
+	}
+	return !info.IsDir()
 }
 
 func EnsureTmpFromVersion(projectDir, version string) error {

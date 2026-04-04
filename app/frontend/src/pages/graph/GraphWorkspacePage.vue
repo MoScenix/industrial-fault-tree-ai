@@ -6,9 +6,9 @@
         <div>
           <p class="eyebrow">Fault Tree Workspace</p>
           <h1>{{ graphInfo?.graphName || '故障树工作台' }}</h1>
-          <p class="subtitle">
-            当前展示 {{ workingGraph?.isTmp ? '暂存版本' : '目录版本' }} ·
-            {{ selectedVersion || graphInfo?.currentVersion || 'v001' }}
+          <p class="subtitle text-sm mt-1 text-slate-500">
+            当前展示 {{ workingGraph?.isTmp ? '非正式版本' : '正式版本' }} ·
+            <span class="font-medium text-slate-700">{{ selectedVersion || graphInfo?.currentVersion || 'v001' }}</span>
           </p>
         </div>
       </div>
@@ -26,18 +26,61 @@
     </header>
 
     <div class="workspace-body">
-      <aside class="tool-rail">
-        <button
-          v-for="item in panelItems"
-          :key="item.key"
-          class="tool-button"
-          :class="{ active: activePanel === item.key }"
-          @click="togglePanel(item.key)"
-        >
-          <component :is="item.icon" />
-          <span>{{ item.label }}</span>
-        </button>
-      </aside>
+      <main class="canvas-panel">
+        <div class="canvas-toolbar">
+          <div class="canvas-meta">
+            <a-tag color="blue">{{ selectedVersion || graphInfo?.currentVersion || 'v001' }}</a-tag>
+            <a-tag :color="workingGraph?.isTmp ? 'orange' : 'cyan'">
+              {{ workingGraph?.isTmp ? '非正式版本' : '正式版本' }}
+            </a-tag>
+            <span class="meta-text">创建者：{{ graphInfo?.userId || '-' }}</span>
+            <span class="meta-text">
+              {{ syncStatusText }}
+            </span>
+          </div>
+          <div class="canvas-meta">
+            <span class="meta-text">节点 {{ flowNodes.length }}</span>
+            <span class="meta-text">边 {{ flowEdges.length }}</span>
+            <a-button type="primary" size="small" @click="handleContextMenuAction('add')">添加节点</a-button>
+          </div> 
+        </div>
+
+        <div class="flow-shell relative" @click="closeContextMenu">
+          <VueFlow
+            v-model:nodes="flowNodes"
+            v-model:edges="flowEdges"
+            fit-view-on-init
+            :min-zoom="0.2"
+            :max-zoom="1.6"
+            :default-edge-options="{ markerEnd: MarkerType.ArrowClosed }"
+            @node-drag-stop="markDirty"
+            @connect="onConnect"
+            @edges-change="markDirty"
+            @nodes-change="markDirty"
+            @pane-context-menu="onPaneContextMenu"
+            @node-context-menu="onNodeContextMenu"
+            @edge-context-menu="onEdgeContextMenu"
+            @pane-click="closeContextMenu"
+          >
+            <template #node-custom="props">
+              <div class="custom-node-content h-full w-full flex flex-col items-center justify-center p-2 relative box-border">
+                <Handle type="target" :position="Position.Top" />
+                <div class="custom-node-label text-center font-bold break-all w-full line-clamp-2">{{ props.data.label }}</div>
+                <div v-if="props.data.description" class="custom-node-desc text-[11px] text-gray-500 text-center mt-1 leading-tight break-all w-full line-clamp-2">
+                  {{ props.data.description }}
+                </div>
+                <Handle type="source" :position="Position.Bottom" />
+              </div>
+            </template>
+            <Background pattern-color="#dbeafe" :gap="24" />
+            <MiniMap pannable zoomable />
+            <Controls />
+          </VueFlow>
+
+          <!-- Developer Tools absolute positioned at bottom-left -->
+          <!-- 隐藏原本的开发调试浮窗，移到右侧侧边栏了 -->
+        </div>
+      </main>
 
       <section v-if="activePanel" class="side-panel" :style="{ width: `${panelWidth}px` }">
         <div class="panel-header">
@@ -48,23 +91,58 @@
           <a-button type="text" @click="activePanel = ''">收起</a-button>
         </div>
 
-        <div class="panel-content">
+        <div class="panel-content flex flex-col">
           <template v-if="activePanel === 'chat'">
-            <div class="chat-list">
-              <div v-for="item in messages" :key="item.id" class="chat-item">
-                <div class="chat-role">{{ item.role === 'assistant' ? 'AI' : '工程师' }}</div>
-                <div class="chat-content">{{ item.content }}</div>
+            <div class="chat-list flex flex-col gap-4 overflow-y-auto pb-4 px-2">
+              <div v-for="item in messages" :key="item.id" class="flex flex-col group">
+                <div 
+                  class="flex max-w-[85%]"
+                  :class="item.role === 'assistant' ? 'self-start' : 'self-end'"
+                >
+                  <div class="flex items-start gap-3" :class="item.role === 'assistant' ? 'flex-row' : 'flex-row-reverse'">
+                    <!-- 头像区域 -->
+                    <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white shadow-sm"
+                         :class="item.role === 'assistant' ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-gradient-to-br from-emerald-500 to-teal-500'">
+                      {{ item.role === 'assistant' ? 'AI' : '我' }}
+                    </div>
+                    
+                    <!-- 消息内容气泡 -->
+                    <div
+                      class="px-4 py-3 shadow-sm text-[14px] leading-relaxed relative"
+                      :class="[
+                        item.role === 'assistant' 
+                          ? 'bg-white text-slate-700 border border-slate-100 rounded-2xl rounded-tl-sm' 
+                          : 'bg-indigo-50 text-indigo-900 border border-indigo-100 rounded-2xl rounded-tr-sm'
+                      ]"
+                    >
+                      <div class="whitespace-pre-wrap font-sans break-words">{{ item.content }}</div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <a-empty v-if="!messages.length" description="当前还没有聊天记录" />
+              <a-empty v-if="!messages.length" description="输入需求，AI 将辅助您构建故障树" class="mt-10" />
             </div>
-            <a-textarea
-              v-model:value="chatInput"
-              :rows="4"
-              :maxlength="1000"
-              placeholder="告诉 AI 你希望如何修改或解释当前故障树"
-            />
-            <div class="panel-actions">
-              <a-button type="primary" :loading="chatting" @click="sendChatMessage">发起一次对话</a-button>
+            
+            <div class="mt-auto pt-4 border-t border-slate-100 flex-shrink-0 bg-white">
+              <div class="relative bg-white rounded-xl border border-slate-200 shadow-sm focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-all overflow-hidden">
+                <a-textarea
+                  v-model:value="chatInput"
+                  :rows="3"
+                  :maxlength="1000"
+                  placeholder="例如：帮我添加一个温度过高的基础事件..."
+                  class="w-full !border-none !shadow-none !bg-transparent resize-none py-3 px-4 focus:!shadow-none text-sm"
+                  @pressEnter="(e: KeyboardEvent) => { if (!e.shiftKey) { e.preventDefault(); sendChatMessage() } }"
+                />
+                <div class="flex justify-between items-center px-3 py-2 bg-slate-50 border-t border-slate-100">
+                  <span class="text-xs text-slate-400">Shift + Enter 换行，Enter 发送</span>
+                  <a-button type="primary" shape="circle" :loading="chatting" @click="sendChatMessage" 
+                            class="!flex !items-center !justify-center !w-8 !h-8 !min-w-0 !bg-indigo-600 hover:!bg-indigo-500 border-none shadow-md">
+                    <svg v-if="!chatting" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                      <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+                    </svg>
+                  </a-button>
+                </div>
+              </div>
             </div>
           </template>
 
@@ -79,7 +157,7 @@
                     <div class="version-main">
                       <div class="version-title">
                         {{ item.versionName || item.version }}
-                        <a-tag v-if="item.isCurrent" color="blue">当前</a-tag>
+                        <a-tag v-if="item.version === currentVersionLabel" color="blue">当前</a-tag>
                       </div>
                       <div class="version-meta">{{ item.version }}</div>
                     </div>
@@ -89,7 +167,7 @@
                         type="link"
                         size="small"
                         danger
-                        :disabled="item.isCurrent"
+                        :disabled="item.version === currentVersionLabel"
                         @click.stop="removeVersion(item)"
                       >
                         删除
@@ -106,66 +184,33 @@
               <pre>{{ suggestion?.content || '当前版本暂无建议内容。' }}</pre>
             </div>
           </template>
+
+          <template v-else-if="activePanel === 'json'">
+            <div class="flex-1 flex flex-col h-full overflow-hidden">
+              <a-textarea
+                v-model:value="workingContent"
+                class="!text-xs font-mono flex-1 h-full"
+                @blur="handleJsonEdited"
+                placeholder="这里会实时展示当前工作图内容..."
+              />
+            </div>
+          </template>
         </div>
-        <div class="resize-handle" @mousedown="startResize"></div>
+        <div class="resize-handle" @mousedown="startResize" style="left: 0; right: auto; cursor: ew-resize;"></div>
       </section>
 
-      <main class="canvas-panel">
-        <div class="canvas-toolbar">
-          <div class="canvas-meta">
-            <a-tag color="blue">{{ selectedVersion || graphInfo?.currentVersion || 'v001' }}</a-tag>
-            <a-tag :color="workingGraph?.isTmp ? 'orange' : 'cyan'">
-              {{ workingGraph?.isTmp ? '正在查看暂存版本' : '正在查看目录版本' }}
-            </a-tag>
-            <span class="meta-text">创建者：{{ graphInfo?.userId || '-' }}</span>
-            <span class="meta-text">
-              {{ workingGraph?.isTmp ? '打开页面后系统已自动创建该版本的编辑副本' : '当前展示的是目录版本，只读展示' }}
-            </span>
-          </div>
-          <div class="canvas-meta">
-            <span class="meta-text">节点 {{ flowNodes.length }}</span>
-            <span class="meta-text">边 {{ flowEdges.length }}</span>
-            <span v-if="isEditorDirty" class="meta-text">未保存修改</span>
-          </div>
-        </div>
-
-        <div class="flow-shell">
-          <VueFlow
-            v-model:nodes="flowNodes"
-            v-model:edges="flowEdges"
-            fit-view-on-init
-            :min-zoom="0.2"
-            :max-zoom="1.6"
-            :default-edge-options="{ markerEnd: MarkerType.ArrowClosed }"
-            @node-drag-stop="markDirty"
-            @connect="onConnect"
-            @edges-change="markDirty"
-            @nodes-change="markDirty"
-          >
-            <Background pattern-color="#dbeafe" :gap="24" />
-            <MiniMap pannable zoomable />
-            <Controls />
-          </VueFlow>
-        </div>
-
-        <div class="editor-footer">
-          <div class="editor-footer-head">
-            <span class="meta-text">开发调试</span>
-            <a-switch v-model:checked="showJsonEditor" checked-children="JSON" un-checked-children="隐藏" />
-          </div>
-          <a-card :bordered="false" class="json-card">
-            <template #title>当前图 JSON 预览</template>
-            <a-textarea
-              v-if="showJsonEditor"
-              v-model:value="workingContent"
-              :rows="12"
-              @blur="handleJsonEdited"
-              placeholder="这里会实时展示当前工作图内容，必要时也可以直接粘贴 JSON 再导入。"
-            />
-            <a-empty v-else description="默认隐藏 JSON 调试区，避免干扰正式图编辑。" />
-          </a-card>
-        </div>
-      </main>
+      <aside class="tool-rail">
+        <button
+          v-for="item in panelItems"
+          :key="item.key"
+          class="tool-button"
+          :class="{ active: activePanel === item.key }"
+          @click="togglePanel(item.key)"
+        >
+          <component :is="item.icon" />
+          <span>{{ item.label }}</span>
+        </button>
+      </aside>
     </div>
 
     <a-modal
@@ -205,6 +250,83 @@
         placeholder="输入新版本名称，例如：v002 或 优化版"
       />
     </a-modal>
+
+    <a-modal
+      v-model:open="showEditNodeModal"
+      title="编辑节点"
+      ok-text="确定"
+      cancel-text="取消"
+      @ok="saveNodeEdit"
+      @cancel="showEditNodeModal = false"
+    >
+      <template #footer>
+        <div style="display: flex; justify-content: space-between;">
+          <a-button danger @click="deleteNode">删除节点</a-button>
+          <div>
+            <a-button @click="showEditNodeModal = false">取消</a-button>
+            <a-button type="primary" @click="saveNodeEdit">确定</a-button>
+          </div>
+        </div>
+      </template>
+      <a-form layout="vertical">
+        <a-form-item label="节点名称">
+          <a-input v-model:value="editingNodeData.label" placeholder="输入节点名称" />
+        </a-form-item>
+        <a-form-item label="节点描述">
+          <a-textarea v-model:value="editingNodeData.description" placeholder="输入节点描述" :rows="3" />
+        </a-form-item>
+        <a-form-item label="节点类型">
+          <a-select v-model:value="editingNodeData.nodeType">
+            <a-select-option value="top_event">顶事件 (Top Event)</a-select-option>
+            <a-select-option value="intermediate_event">中间事件 (Intermediate Event)</a-select-option>
+            <a-select-option value="basic_event">基础事件 (Basic Event)</a-select-option>
+            <a-select-option value="gate">逻辑门 (Gate)</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item v-if="editingNodeData.nodeType === 'gate'" label="逻辑门类型">
+          <a-select v-model:value="editingNodeData.gateType">
+            <a-select-option value="AND">AND (与门)</a-select-option>
+            <a-select-option value="OR">OR (或门)</a-select-option>
+          </a-select>
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <!-- Context Menu -->
+    <div
+      v-if="contextMenu.show"
+      :style="{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }"
+      class="fixed z-50 bg-white shadow-lg rounded-md border border-gray-200 py-1 w-32"
+    >
+      <div
+        v-if="contextMenu.type === 'pane'"
+        class="px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer"
+        @click.stop="handleContextMenuAction('add')"
+      >
+        新建节点
+      </div>
+      <div
+        v-if="contextMenu.type === 'node'"
+        class="px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer"
+        @click.stop="handleContextMenuAction('edit')"
+      >
+        编辑节点
+      </div>
+      <div
+        v-if="contextMenu.type === 'node'"
+        class="px-4 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer"
+        @click.stop="handleContextMenuAction('delete')"
+      >
+        删除节点
+      </div>
+      <div
+        v-if="contextMenu.type === 'edge'"
+        class="px-4 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer"
+        @click.stop="handleContextMenuAction('delete_edge')"
+      >
+        删除连线
+      </div>
+    </div>
   </div>
 </template>
 
@@ -216,11 +338,12 @@ import type { Connection, Edge, Node } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
-import { MarkerType, VueFlow } from '@vue-flow/core'
+import { MarkerType, VueFlow, Handle, Position } from '@vue-flow/core'
 import {
   CommentOutlined,
   DeploymentUnitOutlined,
   SafetyCertificateOutlined,
+  CodeOutlined,
 } from '@ant-design/icons-vue'
 import {
   chatToModifyGraph,
@@ -242,7 +365,7 @@ import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/controls/dist/style.css'
 import '@vue-flow/minimap/dist/style.css'
 
-type PanelKey = '' | 'chat' | 'version' | 'suggestion'
+type PanelKey = '' | 'chat' | 'version' | 'suggestion' | 'json'
 
 const route = useRoute()
 const router = useRouter()
@@ -274,16 +397,109 @@ const saveMode = ref<'overwrite' | 'new'>('overwrite')
 const saveVersionName = ref('')
 let draftSyncTimer: ReturnType<typeof setTimeout> | undefined
 
+const isLocalDraft = computed(() => isEditorDirty.value) // 虽然不再在界面直接显示该文字，但保留此状态供逻辑判断
+const syncStatusText = ref('缓存已同步')
+
+const showEditNodeModal = ref(false)
+const editingNodeId = ref('')
+const editingNodeData = ref({ label: '', nodeType: 'intermediate_event', description: '', gateType: '' })
+
+const contextMenu = ref({ show: false, x: 0, y: 0, type: '', nodeId: '' })
+
+const closeContextMenu = () => {
+  contextMenu.value.show = false
+}
+
+const onPaneContextMenu = (event: MouseEvent) => {
+  event.preventDefault()
+  contextMenu.value = {
+    show: true,
+    x: event.clientX,
+    y: event.clientY,
+    type: 'pane',
+    nodeId: '',
+  }
+}
+
+const onNodeContextMenu = ({ event, node }: any) => {
+  event.preventDefault()
+  contextMenu.value = {
+    show: true,
+    x: event.clientX,
+    y: event.clientY,
+    type: 'node',
+    nodeId: node.id,
+  }
+}
+
+const onEdgeContextMenu = ({ event, edge }: any) => {
+  event.preventDefault()
+  contextMenu.value = {
+    show: true,
+    x: event.clientX,
+    y: event.clientY,
+    type: 'edge',
+    nodeId: edge.id, // 用 nodeId 字段复用存 edgeId
+  }
+}
+
+const handleContextMenuAction = (action: string) => {
+  if (action === 'add') {
+    const id = `node-${Date.now()}`
+    
+    // 如果没有使用特定的坐标转换，至少在视觉中心或者点击处
+    // 此处简化为获取到点击的 contextMenu 坐标
+    // 假设 contextMenu 的坐标就是点击坐标（其实相对于视口，可能需要减去 flow 容器的偏移，这里简单处理）
+    flowNodes.value.push({
+      id,
+      position: { x: 200, y: 200 }, // 可以进一步优化根据点击坐标换算
+      type: 'custom',
+      data: {
+        label: '新节点',
+        nodeType: 'intermediate_event',
+        description: '',
+        gateType: '',
+      },
+      style: {
+        background: nodeColor('intermediate_event'),
+        width: '180px',
+      },
+    })
+    markDirty()
+  } else if (action === 'edit') {
+    const node = flowNodes.value.find((n) => n.id === contextMenu.value.nodeId)
+    if (node) {
+      editingNodeId.value = node.id
+      editingNodeData.value = {
+        label: node.data?.label || '',
+        description: node.data?.description || '',
+        nodeType: node.data?.nodeType || 'intermediate_event',
+        gateType: node.data?.gateType || '',
+      }
+      showEditNodeModal.value = true
+    }
+  } else if (action === 'delete') {
+    editingNodeId.value = contextMenu.value.nodeId
+    deleteNode()
+  } else if (action === 'delete_edge') {
+    flowEdges.value = flowEdges.value.filter((e) => e.id !== contextMenu.value.nodeId)
+    markDirty()
+  }
+  closeContextMenu()
+}
+
 const panelItems = [
   { key: 'chat', label: '对话', icon: CommentOutlined },
   { key: 'version', label: '版本', icon: DeploymentUnitOutlined },
   { key: 'suggestion', label: '校验', icon: SafetyCertificateOutlined },
+  { key: 'json', label: '源码', icon: CodeOutlined },
 ] as const
 
 const panelMeta = {
   chat: { eyebrow: 'Dialogue', title: 'AI 对话记录' },
   version: { eyebrow: 'Version', title: '版本列表' },
   suggestion: { eyebrow: 'Validate', title: '当前建议' },
+  json: { eyebrow: 'Source', title: '当前图 JSON 预览' },
 }
 
 const currentVersionLabel = computed(
@@ -380,15 +596,10 @@ const parseGraphContent = (content?: string) => {
       description: item.description || '',
       gateType: item.gate_type || '',
     },
+    type: 'custom',
     style: {
       background: nodeColor(item.node_type),
-      border: item.node_type === 'gate' ? '1px solid #2dd4bf' : '1px solid #93c5fd',
-      borderRadius: '16px',
-      padding: '10px 14px',
-      color: '#0f172a',
       width: item.node_type === 'gate' ? '120px' : '180px',
-      fontWeight: 600,
-      boxShadow: '0 10px 24px rgba(15, 23, 42, 0.08)',
     },
   }))
 
@@ -455,9 +666,23 @@ const exportGraphModel = () => {
   }
 }
 
-const markDirty = () => {
+const markDirty = async () => {
+  const alreadyDirty = isEditorDirty.value
   isEditorDirty.value = true
   workingContent.value = JSON.stringify(exportGraphModel(), null, 2)
+
+  // 只有当前是正式版本，且是本次编辑的第一次操作时，才异步通知后端创建 tmp
+  if (!alreadyDirty && workingGraph.value && !workingGraph.value.isTmp) {
+    try {
+      await ensureEditReady()
+      // 同步更新本地状态，确保界面立即反映为“非正式版本”
+      if (workingGraph.value) {
+        workingGraph.value.isTmp = true
+      }
+    } catch (e) {
+      console.error('自动准备编辑副本失败:', e)
+    }
+  }
 }
 
 const persistDraftCache = () => {
@@ -476,10 +701,35 @@ const clearDraftCache = () => {
 }
 
 const scheduleDraftSync = () => {
+  syncStatusText.value = '正在同步...'
   if (draftSyncTimer) clearTimeout(draftSyncTimer)
   draftSyncTimer = setTimeout(() => {
     persistDraftCache()
-  }, 3000)
+    syncStatusText.value = '缓存已同步'
+  }, 5000)
+}
+
+const saveNodeEdit = () => {
+  const node = flowNodes.value.find((n) => n.id === editingNodeId.value)
+  if (node) {
+    node.data = { ...node.data, ...editingNodeData.value }
+    node.style = {
+      ...node.style,
+      background: nodeColor(editingNodeData.value.nodeType),
+      width: editingNodeData.value.nodeType === 'gate' ? '120px' : '180px',
+    }
+    markDirty()
+  }
+  showEditNodeModal.value = false
+}
+
+const deleteNode = () => {
+  flowNodes.value = flowNodes.value.filter((n) => n.id !== editingNodeId.value)
+  flowEdges.value = flowEdges.value.filter(
+    (e) => e.source !== editingNodeId.value && e.target !== editingNodeId.value
+  )
+  markDirty()
+  showEditNodeModal.value = false
 }
 
 const restoreDraftCache = () => {
@@ -544,13 +794,11 @@ const loadMessages = async () => {
 
 const refreshAll = async () => {
   await Promise.all([loadGraphInfo(), loadVersions()])
-  await ensureEditReady()
   await Promise.all([loadWorkingGraph(), loadSuggestion(), loadMessages()])
 }
 
 const switchVersion = async (version?: string) => {
   selectedVersion.value = version || graphInfo.value?.currentVersion || 'v001'
-  await ensureEditReady()
   await Promise.all([loadWorkingGraph(), loadSuggestion()])
 }
 
@@ -626,6 +874,11 @@ const sendChatMessage = async () => {
       chatInput.value = ''
       await loadMessages()
       activePanel.value = 'chat'
+      
+      // AI修改完成后刷新图数据
+      clearDraftCache()
+      await loadWorkingGraph()
+      isEditorDirty.value = false
     } else {
       message.error(res.data?.message || 'AI 对话失败')
     }
@@ -704,7 +957,7 @@ const beforeUploadProjectDoc = async (file: File) => {
 const beforeImportGraph = async (file: File) => {
   const text = await file.text()
   parseGraphContent(text)
-  isEditorDirty.value = true
+  markDirty()
   scheduleDraftSync()
   message.success('图文件已导入到当前编辑器')
   return false
@@ -725,7 +978,7 @@ const handleJsonEdited = () => {
   try {
     JSON.parse(workingContent.value)
     parseGraphContent(workingContent.value)
-    isEditorDirty.value = true
+    markDirty()
     scheduleDraftSync()
   } catch (error) {
     console.error(error)
@@ -792,19 +1045,23 @@ watch(
 
 <style scoped>
 .workspace-page {
-  min-height: calc(100vh - 120px);
-  padding: 24px;
+  height: calc(100vh - 64px); /* assuming there is a top nav */
+  display: flex;
+  flex-direction: column;
+  padding: 16px 24px;
   background:
     radial-gradient(circle at top right, rgba(8, 145, 178, 0.14), transparent 24%),
     linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  overflow: hidden;
 }
 
 .workspace-header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: end;
   gap: 24px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .title-block {
@@ -824,7 +1081,7 @@ watch(
 
 .workspace-header h1 {
   margin: 0 0 8px;
-  font-size: 30px;
+  font-size: 26px;
   color: #0f172a;
 }
 
@@ -834,17 +1091,20 @@ watch(
 }
 
 .workspace-body {
-  display: grid;
-  grid-template-columns: 64px auto minmax(0, 1fr);
+  flex: 1;
+  display: flex;
+  flex-direction: row;
   gap: 16px;
-  min-height: calc(100vh - 220px);
+  min-height: 0;
 }
 
 .tool-rail {
+  width: 64px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 12px 0;
+  padding: 0;
 }
 
 .tool-button {
@@ -877,6 +1137,7 @@ watch(
   position: relative;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   min-width: 280px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid #dbeafe;
@@ -929,16 +1190,18 @@ watch(
 }
 
 .canvas-panel {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .canvas-toolbar {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 18px;
+  padding: 12px 18px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid #dbeafe;
@@ -957,8 +1220,8 @@ watch(
 }
 
 .flow-shell {
-  height: 620px;
-  border-radius: 28px;
+  flex: 1;
+  border-radius: 24px;
   overflow: hidden;
   border: 1px solid #dbeafe;
   background: linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
@@ -999,7 +1262,8 @@ watch(
 
 .chat-content {
   color: #334155;
-  line-height: 1.7;
+  font-size: 13px;
+  line-height: 1.6;
   white-space: pre-wrap;
 }
 
@@ -1047,5 +1311,72 @@ watch(
 
 :deep(.vue-flow__controls) {
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+:deep(.vue-flow__node-custom) {
+  border-radius: 12px;
+  border: 1px solid #94a3b8;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease;
+  overflow: visible !important; /* handles should be visible */
+  background: white; /* fallback */
+}
+
+:deep(.vue-flow__node-custom.selected) {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+:deep(.vue-flow__node-custom:hover) {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
+}
+
+.custom-node-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 2px;
+}
+
+.custom-node-desc {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.3;
+}
+
+/* 连接点样式优化 */
+.vue-flow__handle {
+  width: 10px;
+  height: 10px;
+  background-color: #94a3b8;
+  border: 2px solid white;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.vue-flow__handle:hover {
+  background-color: #3b82f6;
+  transform: scale(1.5);
+}
+
+.vue-flow__handle-top {
+  top: -6px;
+}
+
+.vue-flow__handle-bottom {
+  bottom: -6px;
+}
+
+/* 连线悬停效果 */
+.vue-flow__edge-path {
+  stroke-width: 2;
+  stroke: #94a3b8;
+  transition: stroke 0.2s ease, stroke-width 0.2s ease;
+}
+
+.vue-flow__edge:hover .vue-flow__edge-path,
+.vue-flow__edge.selected .vue-flow__edge-path {
+  stroke: #3b82f6;
+  stroke-width: 3;
 }
 </style>

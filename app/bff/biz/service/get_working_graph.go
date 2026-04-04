@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"os"
 
 	graph "github.com/MoScenix/industrial-fault-tree-ai/app/bff/hertz_gen/bff/graph"
 	"github.com/cloudwego/hertz/pkg/app"
@@ -28,7 +27,7 @@ func (h *GetWorkingGraphService) Run(req *graph.GetWorkingGraphRequest) (resp *g
 	}
 	isTmp := false
 	path := treePath(item.ProjectDir, version, false)
-	if _, statErr := os.Stat(treePath(item.ProjectDir, version, true)); statErr == nil {
+	if hasTmpVersionTree(item.ProjectDir, version) {
 		isTmp = true
 		path = treePath(item.ProjectDir, version, true)
 	}

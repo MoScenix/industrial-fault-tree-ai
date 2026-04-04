@@ -128,6 +128,14 @@ func hasTmp(projectDir string) bool {
 	return false
 }
 
+func hasTmpVersionTree(projectDir, version string) bool {
+	info, err := os.Stat(filepath.Join(projectDir, "tmp", version, "tree.json"))
+	if err != nil {
+		return false
+	}
+	return !info.IsDir()
+}
+
 func tmpVersionDir(projectDir, version string) string {
 	return filepath.Join(projectDir, "tmp", version)
 }
@@ -163,14 +171,15 @@ func readOptionalFile(path string) (string, time.Time, error) {
 }
 
 func toGraphVO(item *graphRecord) *graphbff.GraphVO {
+	current := currentVersion(item.ProjectDir)
 	return &graphbff.GraphVO{
 		Id:             item.ID,
 		GraphName:      item.GraphName,
 		Description:    item.Description,
 		Cover:          item.Cover,
 		UserId:         item.UserID,
-		CurrentVersion: currentVersion(item.ProjectDir),
-		HasTmp:         hasTmp(item.ProjectDir),
+		CurrentVersion: current,
+		HasTmp:         hasTmpVersionTree(item.ProjectDir, current),
 		CreateTime:     item.CreateTime,
 		UpdateTime:     item.UpdateTime,
 	}

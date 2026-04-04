@@ -15,7 +15,7 @@ func toGraphInfo(item model.Graph) *graphpb.GraphInfo {
 		Cover:          item.Cover,
 		UserId:         int64(item.UserID),
 		CurrentVersion: currentVersion,
-		HasTmp:         utils.HasTmp(item.ProjectDir),
+		HasTmp:         utils.HasTmpTree(item.ProjectDir, currentVersion),
 		CreateTime:     utils.FormatTime(item.CreatedAt),
 		UpdateTime:     utils.FormatTime(item.UpdatedAt),
 		ProjectDir:     item.ProjectDir,
