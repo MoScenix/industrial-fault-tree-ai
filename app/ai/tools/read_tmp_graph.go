@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	lutils "github.com/MoScenix/industrial-fault-tree-ai/app/ai/utils"
@@ -23,8 +24,15 @@ type ReadTmpGraphResponse struct {
 func ReadTmpGraphFunc(ctx context.Context, req *ReadTmpGraphRequest) (*ReadTmpGraphResponse, error) {
 	projectCtx, _ := ctx.Value(lutils.ProjectContextKey).(*lutils.ProjectContext)
 	if projectCtx == nil || projectCtx.ProjectID == "" {
+		fmt.Printf("[tool:read_tmp_graph] empty project context\n")
 		return &ReadTmpGraphResponse{Graph: lutils.DefaultGraphFile("")}, nil
 	}
+	requestVersion := ""
+	if req != nil {
+		requestVersion = req.Version
+	}
+	fmt.Printf("[tool:read_tmp_graph] project=%s ctx_version=%s req_version=%s\n",
+		projectCtx.ProjectID, projectCtx.CurrentVersion, requestVersion)
 
 	if req != nil && req.Version != "" {
 		graph, basedOnVersion, _, err := lutils.LoadWorkingGraph(projectCtx.ProjectID, req.Version)
@@ -37,10 +45,12 @@ func ReadTmpGraphFunc(ctx context.Context, req *ReadTmpGraphRequest) (*ReadTmpGr
 			}
 			return nil, err
 		}
+		fmt.Printf("[tool:read_tmp_graph] loaded project=%s version=%s based_on=%s\n",
+			projectCtx.ProjectID, req.Version, basedOnVersion)
 		return &ReadTmpGraphResponse{Graph: graph, BasedOnVersion: basedOnVersion}, nil
 	}
 
-	graph, basedOnVersion, _, err := lutils.LoadWorkingGraph(projectCtx.ProjectID, "")
+	graph, basedOnVersion, _, err := lutils.LoadWorkingGraph(projectCtx.ProjectID, projectCtx.CurrentVersion)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return &ReadTmpGraphResponse{
@@ -50,6 +60,8 @@ func ReadTmpGraphFunc(ctx context.Context, req *ReadTmpGraphRequest) (*ReadTmpGr
 		}
 		return nil, err
 	}
+	fmt.Printf("[tool:read_tmp_graph] loaded project=%s version=%s based_on=%s\n",
+		projectCtx.ProjectID, projectCtx.CurrentVersion, basedOnVersion)
 	return &ReadTmpGraphResponse{Graph: graph, BasedOnVersion: basedOnVersion}, nil
 }
 

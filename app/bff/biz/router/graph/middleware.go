@@ -140,3 +140,8 @@ func _getcurrentsuggestionMw() []app.HandlerFunc {
 	// your code...
 	return nil
 }
+
+func _validategraphMw() []app.HandlerFunc {
+	// your code...
+	return nil
+}

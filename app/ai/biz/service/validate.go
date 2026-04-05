@@ -25,10 +25,16 @@ func NewValidateService(ctx context.Context) *ValidateService {
 // Run validates a project graph version. Business logic is intentionally deferred.
 func (s *ValidateService) Run(req *ai.ValidateReq) (resp *ai.ValidateResp, err error) {
 	currentVersion, _ := lutils.ReadCurrentVersion(req.ProjectId)
-	_, statErr := os.Stat(lutils.TmpTreePath(req.ProjectId))
+	targetVersion := req.Version
+	if targetVersion == "" {
+		targetVersion = currentVersion
+	}
+	_, statErr := os.Stat(lutils.TmpVersionTreePath(req.ProjectId, targetVersion))
+	fmt.Printf("[ai:validate] project=%s version=%s tmp_ready=%v\n",
+		req.ProjectId, targetVersion, statErr == nil)
 	s.ctx = context.WithValue(s.ctx, lutils.ProjectContextKey, &lutils.ProjectContext{
 		ProjectID:       req.ProjectId,
-		CurrentVersion:  currentVersion,
+		CurrentVersion:  targetVersion,
 		TmpVersionReady: statErr == nil,
 	})
 
@@ -36,20 +42,20 @@ func (s *ValidateService) Run(req *ai.ValidateReq) (resp *ai.ValidateResp, err e
 	if err != nil {
 		return nil, err
 	}
-	agent, err := lagent.NewAgent(s.ctx, ai.PromptMode_LOG_MODE)
+	agent, err := lagent.NewReActAgent(s.ctx, ai.PromptMode_LOG_MODE)
 	if err != nil {
 		return nil, err
 	}
 
 	result, err := agent.Generate(s.ctx, []*schema.Message{
 		schema.SystemMessage(prompt),
-		schema.UserMessage(fmt.Sprintf("请为项目 %s 的版本 %s 生成一份校验日志，输出 Markdown，总结当前图的风险、缺失信息和建议。", req.ProjectId, req.Version)),
+		schema.UserMessage(fmt.Sprintf("请为项目 %s 的版本 %s 生成一份校验建议，输出 Markdown，总结当前图的风险、缺失信息和改进建议。", req.ProjectId, targetVersion)),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	suggestionPath := lutils.SuggestionPath(req.ProjectId, req.Version)
+	suggestionPath := lutils.SuggestionPath(req.ProjectId, targetVersion)
 	if err := os.MkdirAll(filepath.Dir(suggestionPath), 0o755); err != nil {
 		return nil, err
 	}

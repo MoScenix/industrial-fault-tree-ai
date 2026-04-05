@@ -59,6 +59,11 @@ func (x *ChatReq) FastRead(buf []byte, _type int8, number int32) (offset int, er
 		if err != nil {
 			goto ReadFieldError
 		}
+	case 3:
+		offset, err = x.fastReadField3(buf, _type)
+		if err != nil {
+			goto ReadFieldError
+		}
 	default:
 		offset, err = fastpb.Skip(buf, _type, number)
 		if err != nil {
@@ -85,6 +90,11 @@ func (x *ChatReq) fastReadField2(buf []byte, _type int8) (offset int, err error)
 	}
 	x.History = append(x.History, &v)
 	return offset, nil
+}
+
+func (x *ChatReq) fastReadField3(buf []byte, _type int8) (offset int, err error) {
+	x.Version, offset, err = fastpb.ReadString(buf, _type)
+	return offset, err
 }
 
 func (x *ChatResp) FastRead(buf []byte, _type int8, number int32) (offset int, err error) {
@@ -468,6 +478,7 @@ func (x *ChatReq) FastWrite(buf []byte) (offset int) {
 	}
 	offset += x.fastWriteField1(buf[offset:])
 	offset += x.fastWriteField2(buf[offset:])
+	offset += x.fastWriteField3(buf[offset:])
 	return offset
 }
 
@@ -486,6 +497,14 @@ func (x *ChatReq) fastWriteField2(buf []byte) (offset int) {
 	for i := range x.GetHistory() {
 		offset += fastpb.WriteMessage(buf[offset:], 2, x.GetHistory()[i])
 	}
+	return offset
+}
+
+func (x *ChatReq) fastWriteField3(buf []byte) (offset int) {
+	if x.Version == "" {
+		return offset
+	}
+	offset += fastpb.WriteString(buf[offset:], 3, x.GetVersion())
 	return offset
 }
 
@@ -760,6 +779,7 @@ func (x *ChatReq) Size() (n int) {
 	}
 	n += x.sizeField1()
 	n += x.sizeField2()
+	n += x.sizeField3()
 	return n
 }
 
@@ -778,6 +798,14 @@ func (x *ChatReq) sizeField2() (n int) {
 	for i := range x.GetHistory() {
 		n += fastpb.SizeMessage(2, x.GetHistory()[i])
 	}
+	return n
+}
+
+func (x *ChatReq) sizeField3() (n int) {
+	if x.Version == "" {
+		return n
+	}
+	n += fastpb.SizeString(3, x.GetVersion())
 	return n
 }
 
@@ -1029,6 +1057,7 @@ var fieldIDToName_HistoryItem = map[int32]string{
 var fieldIDToName_ChatReq = map[int32]string{
 	1: "ProjectId",
 	2: "History",
+	3: "Version",
 }
 
 var fieldIDToName_ChatResp = map[int32]string{

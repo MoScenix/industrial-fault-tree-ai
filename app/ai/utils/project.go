@@ -94,6 +94,11 @@ func LoadWorkingGraph(projectID, version string) (*GraphFile, string, bool, erro
 		return graph, currentVersion, false, loadErr
 	}
 
+	tmpPath := TmpVersionTreePath(projectID, version)
+	if _, err := os.Stat(tmpPath); err == nil {
+		graph, loadErr := LoadGraphFile(tmpPath)
+		return graph, version, true, loadErr
+	}
 	graph, err := LoadGraphFile(VersionTreePath(projectID, version))
 	return graph, version, false, err
 }

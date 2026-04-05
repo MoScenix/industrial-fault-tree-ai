@@ -12,6 +12,7 @@ message HistoryItem {
 message ChatReq {
   string project_id = 1;
   repeated HistoryItem history = 2;
+  string version = 3;
 }
 
 message ChatResp {

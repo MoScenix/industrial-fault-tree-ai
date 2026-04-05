@@ -39,6 +39,10 @@ service GraphService {
     option (api.get) = "/graph/suggestion/current";
   }
 
+  rpc ValidateGraph(ValidateGraphRequest) returns (BaseResponseBoolean) {
+    option (api.post) = "/graph/validate";
+  }
+
   rpc DiscardWorkingGraph(DiscardWorkingGraphRequest) returns (BaseResponseBoolean) {
     option (api.post) = "/graph/edit/discard";
   }
@@ -200,6 +204,11 @@ message GetCurrentSuggestionRequest {
   string version = 2 [(api.query) = "version"];
 }
 
+message ValidateGraphRequest {
+  int64 graphId = 1;
+  string version = 2;
+}
+
 message DiscardWorkingGraphRequest {
   int64 graphId = 1;
   string version = 2;
@@ -237,6 +246,7 @@ message RenameGraphVersionRequest {
 message ChatToModifyGraphRequest {
   int64 graphId = 1 [(api.query) = "graphId"];
   string message = 2 [(api.query) = "message"];
+  string version = 3 [(api.query) = "version"];
 }
 
 message ListGraphMessageRequest {

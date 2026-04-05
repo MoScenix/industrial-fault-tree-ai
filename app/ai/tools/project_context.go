@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"fmt"
 
 	lutils "github.com/MoScenix/industrial-fault-tree-ai/app/ai/utils"
 	"github.com/cloudwego/eino/components/tool"
@@ -25,8 +26,11 @@ func GetProjectContextFunc(ctx context.Context, req *ProjectContextRequest) (*Pr
 	_ = req
 	projectCtx, _ := ctx.Value(lutils.ProjectContextKey).(*lutils.ProjectContext)
 	if projectCtx == nil {
+		fmt.Printf("[tool:get_project_context] empty project context\n")
 		return &ProjectContextResponse{}, nil
 	}
+	fmt.Printf("[tool:get_project_context] project=%s version=%s tmp_ready=%v\n",
+		projectCtx.ProjectID, projectCtx.CurrentVersion, projectCtx.TmpVersionReady)
 	return &ProjectContextResponse{
 		ProjectID:       projectCtx.ProjectID,
 		DeviceName:      projectCtx.DeviceName,

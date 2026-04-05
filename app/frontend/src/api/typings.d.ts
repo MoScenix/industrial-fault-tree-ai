@@ -109,6 +109,7 @@ declare namespace API {
   type chatToModifyGraphParams = {
     graphId: number
     message: string
+    version?: string
   }
 
   type DeleteGraphVersionRequest = {
@@ -380,6 +381,11 @@ declare namespace API {
     userRole?: string
     createTime?: string
     updateTime?: string
+  }
+
+  type ValidateGraphRequest = {
+    graphId?: number
+    version?: string
   }
 
   type WorkingGraphVO = {

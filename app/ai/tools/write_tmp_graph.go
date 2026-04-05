@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	lutils "github.com/MoScenix/industrial-fault-tree-ai/app/ai/utils"
@@ -25,21 +26,28 @@ type WriteTmpGraphResponse struct {
 func WriteTmpGraphFunc(ctx context.Context, req *WriteTmpGraphRequest) (*WriteTmpGraphResponse, error) {
 	projectCtx, _ := ctx.Value(lutils.ProjectContextKey).(*lutils.ProjectContext)
 	if projectCtx == nil || projectCtx.ProjectID == "" {
+		fmt.Printf("[tool:write_tmp_graph] empty project context\n")
 		return &WriteTmpGraphResponse{Success: false}, nil
 	}
 	if req == nil || req.Graph == nil {
+		fmt.Printf("[tool:write_tmp_graph] project=%s version=%s empty graph request\n",
+			projectCtx.ProjectID, projectCtx.CurrentVersion)
 		return &WriteTmpGraphResponse{Success: false}, nil
 	}
+	fmt.Printf("[tool:write_tmp_graph] project=%s version=%s change_summary=%q nodes=%d\n",
+		projectCtx.ProjectID, projectCtx.CurrentVersion, req.ChangeSummary, len(req.Graph.Nodes))
 
 	req.Graph.Meta.BasedOnVersion = projectCtx.CurrentVersion
 	req.Graph.Meta.GeneratedAt = time.Now().Format("2006-01-02 15:04:05")
 	if req.Graph.Meta.Version == "" {
 		req.Graph.Meta.Version = "tmp"
 	}
-	tmpPath := lutils.TmpTreePath(projectCtx.ProjectID)
+	tmpPath := lutils.TmpVersionTreePath(projectCtx.ProjectID, projectCtx.CurrentVersion)
 	if err := lutils.SaveGraphFile(tmpPath, req.Graph); err != nil {
 		return nil, err
 	}
+	fmt.Printf("[tool:write_tmp_graph] project=%s version=%s wrote=%s\n",
+		projectCtx.ProjectID, projectCtx.CurrentVersion, tmpPath)
 	return &WriteTmpGraphResponse{
 		Success:        true,
 		TmpPath:        tmpPath,

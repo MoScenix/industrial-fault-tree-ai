@@ -97,6 +97,10 @@ func loadAuthorizedGraphRecord(ctx context.Context, graphID int64) (*graphRecord
 	}, nil
 }
 
+func projectIDFromDir(projectDir string) string {
+	return filepath.Base(filepath.Clean(projectDir))
+}
+
 func graphAccessError(err error) error {
 	if err == nil {
 		return nil

@@ -24,6 +24,7 @@ func Register(r *server.Hertz) {
 		_graph.POST("/delete", append(_deletegraphMw(), graph.DeleteGraph)...)
 		_graph.POST("/save", append(_savegraphMw(), graph.SaveGraph)...)
 		_graph.POST("/update", append(_updategraphMw(), graph.UpdateGraph)...)
+		_graph.POST("/validate", append(_validategraphMw(), graph.ValidateGraph)...)
 		{
 			_download := _graph.Group("/download", _downloadMw()...)
 			_download.GET("/:graphId", append(_downloadgraphMw(), graph.DownloadGraph)...)

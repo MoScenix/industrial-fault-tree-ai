@@ -2,15 +2,16 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 
 	lagent "github.com/MoScenix/industrial-fault-tree-ai/app/ai/agent"
 	"github.com/MoScenix/industrial-fault-tree-ai/app/ai/promptutil"
 	lutils "github.com/MoScenix/industrial-fault-tree-ai/app/ai/utils"
+	ai "github.com/MoScenix/industrial-fault-tree-ai/rpc_gen/kitex_gen/ai"
 	"github.com/cloudwego/eino/schema"
 	"github.com/cloudwego/kitex/pkg/klog"
-	ai "github.com/MoScenix/industrial-fault-tree-ai/rpc_gen/kitex_gen/ai"
 )
 
 type ChatService struct {
@@ -24,11 +25,17 @@ func NewChatService(ctx context.Context) *ChatService {
 
 func (s *ChatService) Run(req *ai.ChatReq, stream ai.AiService_ChatServer) (err error) {
 	currentVersion, _ := lutils.ReadCurrentVersion(req.ProjectId)
-	_, statErr := os.Stat(lutils.TmpTreePath(req.ProjectId))
+	targetVersion := req.Version
+	if targetVersion == "" {
+		targetVersion = currentVersion
+	}
+	_, statErr := os.Stat(lutils.TmpVersionTreePath(req.ProjectId, targetVersion))
+	fmt.Printf("[ai:chat] project=%s version=%s tmp_ready=%v history=%d\n",
+		req.ProjectId, targetVersion, statErr == nil, len(req.History))
 
 	s.ctx = context.WithValue(s.ctx, lutils.ProjectContextKey, &lutils.ProjectContext{
 		ProjectID:       req.ProjectId,
-		CurrentVersion:  currentVersion,
+		CurrentVersion:  targetVersion,
 		TmpVersionReady: statErr == nil,
 	})
 
@@ -36,7 +43,7 @@ func (s *ChatService) Run(req *ai.ChatReq, stream ai.AiService_ChatServer) (err 
 	if err != nil {
 		return err
 	}
-	agent, err := lagent.NewAgent(s.ctx, ai.PromptMode_MODIFY_MODE)
+	agent, err := lagent.NewReActAgent(s.ctx, ai.PromptMode_MODIFY_MODE)
 	if err != nil {
 		return err
 	}

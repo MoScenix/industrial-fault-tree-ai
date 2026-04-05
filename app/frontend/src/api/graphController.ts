@@ -1,6 +1,7 @@
 // @ts-ignore
 /* eslint-disable */
 import request from '@/request'
+import { API_BASE_URL } from '@/config/env'
 
 export async function addGraph(body: API.GraphAddRequest, options?: { [key: string]: any }) {
   return request<API.BaseResponseLong>('/graph/add', {
@@ -212,10 +213,124 @@ export async function chatToModifyGraph(
   options?: { [key: string]: any },
 ) {
   return request<API.ServerSentEventString>('/graph/chat', {
-    method: 'GET',
-    params: {
-      ...params,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
     },
+    data: params,
+    ...(options || {}),
+  })
+}
+
+/**
+ * AI 对话流式接口 (SSE)
+ */
+export async function chatToModifyGraphSSE(
+  params: API.chatToModifyGraphParams,
+  handlers: {
+    onMessage?: (chunk: string) => void
+    onError?: (error: string) => void
+    onDone?: () => void
+  },
+) {
+  const url = `${API_BASE_URL}/graph/chat`
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      credentials: 'include',
+      body: JSON.stringify(params),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      handlers.onError?.(`HTTP ${response.status}: ${errorText}`)
+      return
+    }
+
+    const reader = response.body?.getReader()
+    if (!reader) {
+      handlers.onError?.('SSE reader unavailable')
+      return
+    }
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    const flushEvent = (eventBlock: string) => {
+      const lines = eventBlock.split('\n')
+      let eventName = 'message'
+      const dataLines: string[] = []
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim()
+        if (!line) continue
+        if (line.startsWith('event:')) {
+          eventName = line.slice(6).trim()
+          continue
+        }
+        if (line.startsWith('data:')) {
+          dataLines.push(line.slice(5).trim())
+        }
+      }
+
+      const dataText = dataLines.join('\n')
+      if (eventName === 'done') {
+        handlers.onDone?.()
+        return
+      }
+      if (!dataText) return
+
+      try {
+        const payload = JSON.parse(dataText) as API.ServerSentEventString
+        if (eventName === 'business-error') {
+          handlers.onError?.(payload.message || 'AI 对话失败')
+          return
+        }
+        if (payload.d) {
+          handlers.onMessage?.(payload.d)
+        }
+      } catch {
+        if (eventName === 'business-error') {
+          handlers.onError?.(dataText || 'AI 对话失败')
+          return
+        }
+        handlers.onMessage?.(dataText)
+      }
+    }
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const parts = buffer.split('\n\n')
+      buffer = parts.pop() || ''
+      for (const part of parts) {
+        flushEvent(part)
+      }
+    }
+
+    if (buffer.trim()) {
+      flushEvent(buffer)
+    }
+    handlers.onDone?.()
+  } catch (err: any) {
+    handlers.onError?.(err.message || 'Network error')
+  }
+}
+
+export async function validateGraph(body: API.ValidateGraphRequest, options?: { [key: string]: any }) {
+  return request<API.BaseResponseBoolean>('/graph/validate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
     ...(options || {}),
   })
 }

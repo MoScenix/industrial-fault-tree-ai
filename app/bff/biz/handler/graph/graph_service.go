@@ -297,11 +297,9 @@ func ChatToModifyGraph(ctx context.Context, c *app.RequestContext) {
 	resp := &graph.ServerSentEventString{}
 	resp, err = service.NewChatToModifyGraphService(ctx, c).Run(&req)
 	if err != nil {
-		utils.SendErrResponse(ctx, c, consts.StatusOK, err)
 		return
 	}
-
-	utils.SendSuccessResponse(ctx, c, consts.StatusOK, resp)
+	_ = resp
 }
 
 // ListGraphMessage .
@@ -358,6 +356,26 @@ func GetCurrentSuggestion(ctx context.Context, c *app.RequestContext) {
 	}
 
 	resp, err := service.NewGetCurrentSuggestionService(ctx, c).Run(&req)
+
+	if err != nil {
+		utils.SendErrResponse(ctx, c, consts.StatusOK, err)
+		return
+	}
+	utils.SendSuccessResponse(ctx, c, consts.StatusOK, resp)
+}
+
+// ValidateGraph .
+// @router /graph/validate [POST]
+func ValidateGraph(ctx context.Context, c *app.RequestContext) {
+	var err error
+	var req graph.ValidateGraphRequest
+	err = c.BindAndValidate(&req)
+	if err != nil {
+		utils.SendErrResponse(ctx, c, consts.StatusOK, err)
+		return
+	}
+
+	resp, err := service.NewValidateGraphService(ctx, c).Run(&req)
 
 	if err != nil {
 		utils.SendErrResponse(ctx, c, consts.StatusOK, err)

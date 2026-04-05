@@ -36,7 +36,7 @@ func NewChatModel(ctx context.Context) (*qwen.ChatModel, error) {
 	})
 }
 
-func NewAgent(ctx context.Context, mode ai.PromptMode) (*react.Agent, error) {
+func NewReActAgent(ctx context.Context, mode ai.PromptMode) (*react.Agent, error) {
 	cm, err := NewChatModel(ctx)
 	if err != nil {
 		return nil, err
@@ -54,6 +54,10 @@ func NewAgent(ctx context.Context, mode ai.PromptMode) (*react.Agent, error) {
 		},
 		MaxStep: 20,
 	})
+}
+
+func NewAgent(ctx context.Context, mode ai.PromptMode) (*react.Agent, error) {
+	return NewReActAgent(ctx, mode)
 }
 
 func toolsByMode(mode ai.PromptMode) ([]tool.BaseTool, error) {

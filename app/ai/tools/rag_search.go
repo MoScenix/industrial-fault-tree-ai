@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -35,8 +36,22 @@ type RAGSearchResponse struct {
 func RAGSearchFunc(ctx context.Context, req *RAGSearchRequest) (*RAGSearchResponse, error) {
 	projectCtx, _ := ctx.Value(lutils.ProjectContextKey).(*lutils.ProjectContext)
 	if projectCtx == nil || projectCtx.ProjectID == "" || req == nil || strings.TrimSpace(req.Query) == "" {
+		fmt.Printf("[tool:rag_search] skip project_ctx_nil=%v project=%q query=%q\n",
+			projectCtx == nil, func() string {
+				if projectCtx == nil {
+					return ""
+				}
+				return projectCtx.ProjectID
+			}(), func() string {
+				if req == nil {
+					return ""
+				}
+				return req.Query
+			}())
 		return &RAGSearchResponse{Chunks: []*RAGChunk{}}, nil
 	}
+	fmt.Printf("[tool:rag_search] project=%s version=%s query=%q topk=%d\n",
+		projectCtx.ProjectID, projectCtx.CurrentVersion, req.Query, req.TopK)
 
 	docRoot := filepath.Join(lutils.ProjectDir(projectCtx.ProjectID), "documents")
 	matches := make([]*RAGChunk, 0)
@@ -75,6 +90,8 @@ func RAGSearchFunc(ctx context.Context, req *RAGSearchRequest) (*RAGSearchRespon
 	if limit <= 0 || limit > len(matches) {
 		limit = len(matches)
 	}
+	fmt.Printf("[tool:rag_search] project=%s matched=%d returned=%d\n",
+		projectCtx.ProjectID, len(matches), limit)
 	return &RAGSearchResponse{Chunks: matches[:limit]}, nil
 }
 
