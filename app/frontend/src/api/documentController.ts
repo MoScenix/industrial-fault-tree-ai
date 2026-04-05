@@ -7,9 +7,6 @@ export async function uploadUserDocument(file: File, options?: { [key: string]: 
   formData.append('file', file)
   return request<API.BaseResponseBoolean>('/document/user/upload', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
     data: formData,
     ...(options || {}),
   })
@@ -25,9 +22,6 @@ export async function uploadProjectDocument(
   formData.append('file', file)
   return request<API.BaseResponseBoolean>('/document/project/upload', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
     data: formData,
     ...(options || {}),
   })

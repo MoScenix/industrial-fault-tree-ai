@@ -4,6 +4,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/MoScenix/industrial-fault-tree-ai/app/ai/infra/rpc"
 	"github.com/MoScenix/industrial-fault-tree-ai/app/ai/conf"
 	"github.com/MoScenix/industrial-fault-tree-ai/common/mtl"
 	"github.com/MoScenix/industrial-fault-tree-ai/common/serversuit"
@@ -19,6 +20,7 @@ import (
 
 func main() {
 	godotenv.Load()
+	rpc.Init()
 	mtl.InitMetric(conf.GetConf().Kitex.Service, conf.GetConf().Kitex.MetricsPort, conf.GetConf().Registry.RegistryAddress[0])
 	opts := kitexInit()
 

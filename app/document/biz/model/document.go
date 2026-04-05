@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	dalmilvus "github.com/MoScenix/industrial-fault-tree-ai/app/document/biz/dal/milvus"
+	eretriever "github.com/cloudwego/eino/components/retriever"
 	"github.com/cloudwego/eino/schema"
 )
 
@@ -44,6 +45,8 @@ var (
 	ErrDocumentLookupUnimplemented = errors.New("document lookup is not implemented")
 )
 
+const embeddingBatchSize = 10
+
 type DocumentQuery struct {
 	ctx context.Context
 }
@@ -77,8 +80,18 @@ func (q *DocumentQuery) CreateDocument(doc Document) error {
 		})
 	}
 
-	_, err := dalmilvus.Indexer.Store(q.ctx, docs)
-	return err
+	for start := 0; start < len(docs); start += embeddingBatchSize {
+		end := start + embeddingBatchSize
+		if end > len(docs) {
+			end = len(docs)
+		}
+
+		if _, err := dalmilvus.Indexer.Store(q.ctx, docs[start:end]); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (q *DocumentQuery) GetDocumentByDocumentID(documentID string) (Document, error) {
@@ -98,7 +111,12 @@ func (q *DocumentQuery) SearchDocuments(userID, projectID, query string, topK in
 		return nil, ErrMilvusRetrieverUnavailable
 	}
 
-	docs, err := dalmilvus.Retriever.Retrieve(q.ctx, query)
+	opts := make([]eretriever.Option, 0, 1)
+	if topK > 0 {
+		opts = append(opts, eretriever.WithTopK(int(topK)))
+	}
+
+	docs, err := dalmilvus.Retriever.Retrieve(q.ctx, query, opts...)
 	if err != nil {
 		return nil, err
 	}

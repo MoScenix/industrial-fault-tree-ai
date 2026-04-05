@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/MoScenix/industrial-fault-tree-ai/app/document/biz/model"
@@ -17,13 +18,37 @@ const (
 	defaultChunkOverlap = 200
 )
 
-func ResolvePDFPath(pdfID string) string {
-	return filepath.Join(conf.GetConf().Document.PDFDir, fmt.Sprintf("%s.pdf", pdfID))
+func ResolvePDFPath(pdfID, fileName string) (string, error) {
+	docDir := filepath.Join(conf.GetConf().Document.PDFDir, pdfID)
+	if fileName != "" {
+		candidate := filepath.Join(docDir, filepath.Base(fileName))
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+
+	entries, err := os.ReadDir(docDir)
+	if err != nil {
+		return "", err
+	}
+
+	candidates := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		candidates = append(candidates, filepath.Join(docDir, entry.Name()))
+	}
+	sort.Strings(candidates)
+	if len(candidates) == 0 {
+		return "", os.ErrNotExist
+	}
+	return candidates[0], nil
 }
 
-func ParsePDFFile(pdfID string) (string, error) {
-	pdfPath := ResolvePDFPath(pdfID)
-	if _, err := os.Stat(pdfPath); err != nil {
+func ParsePDFFile(pdfID, fileName string) (string, error) {
+	pdfPath, err := ResolvePDFPath(pdfID, fileName)
+	if err != nil {
 		return "", err
 	}
 

@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"os"
+	"mime/multipart"
 	"path/filepath"
 	"strconv"
 
@@ -21,32 +21,36 @@ func NewUploadProjectDocumentService(Context context.Context, RequestContext *ap
 	return &UploadProjectDocumentService{RequestContext: RequestContext, Context: Context}
 }
 
-func (h *UploadProjectDocumentService) Run(req *document.UploadProjectDocumentRequest) (resp *document.BaseResponseBoolean, err error) {
-	item, err := loadAuthorizedGraphRecord(h.Context, req.GraphId)
-	if err != nil {
+func (h *UploadProjectDocumentService) Run(graphID int64, fileHeader *multipart.FileHeader) (resp *document.BaseResponseBoolean, err error) {
+	if _, err := loadAuthorizedGraphRecord(h.Context, graphID); err != nil {
 		return &document.BaseResponseBoolean{Code: 1, Message: graphAccessError(err).Error()}, nil
 	}
+	if fileHeader == nil {
+		return &document.BaseResponseBoolean{Code: 1, Message: "file is required"}, nil
+	}
 	pdfID := newObjectID()
-	globalPDFPath := filepath.Join("/document", pdfID+".pdf")
-	projectPDFPath := filepath.Join(item.ProjectDir, "documents", pdfID+".pdf")
-	if err := os.MkdirAll(filepath.Dir(globalPDFPath), 0o755); err != nil {
-		return &document.BaseResponseBoolean{Code: 1, Message: err.Error()}, err
+	fileName := sanitizeUploadFileName(fileHeader, pdfID+".pdf")
+	globalDocDir := filepath.Join("/document", pdfID)
+	if _, err := saveUploadedFileToDocDir(h.RequestContext, fileHeader, globalDocDir, fileName); err != nil {
+		return &document.BaseResponseBoolean{Code: 1, Message: err.Error()}, nil
 	}
-	if err := os.MkdirAll(filepath.Dir(projectPDFPath), 0o755); err != nil {
-		return &document.BaseResponseBoolean{Code: 1, Message: err.Error()}, err
-	}
-	if err := os.WriteFile(globalPDFPath, req.File, 0o644); err != nil {
-		return &document.BaseResponseBoolean{Code: 1, Message: err.Error()}, err
-	}
-	if err := os.WriteFile(projectPDFPath, req.File, 0o644); err != nil {
-		return &document.BaseResponseBoolean{Code: 1, Message: err.Error()}, err
-	}
-	_, err = rpc.DocumentClient.ParseProjectPDF(h.Context, &rpcdocument.ParseProjectPDFReq{
-		ProjectId: strconv.FormatInt(req.GraphId, 10),
-		PdfId:     pdfID, FileName: req.FileName, DisplayName: req.FileName,
+
+	parseResp, err := rpc.DocumentClient.ParseProjectPDF(h.Context, &rpcdocument.ParseProjectPDFReq{
+		ProjectId: strconv.FormatInt(graphID, 10),
+		PdfId:     pdfID, FileName: fileName, DisplayName: fileName,
 	})
 	if err != nil {
-		return &document.BaseResponseBoolean{Code: 1, Message: err.Error()}, err
+		return &document.BaseResponseBoolean{Code: 1, Message: err.Error()}, nil
+	}
+	if parseResp == nil {
+		return &document.BaseResponseBoolean{Code: 1, Message: "document parse returned empty response"}, nil
+	}
+	if !parseResp.GetSuccess() {
+		message := parseResp.GetErrorMessage()
+		if message == "" {
+			message = "document parse failed"
+		}
+		return &document.BaseResponseBoolean{Code: 1, Message: message}, nil
 	}
 	return &document.BaseResponseBoolean{Code: 0, Message: "success", Data: true}, nil
 }

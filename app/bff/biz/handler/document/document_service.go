@@ -2,6 +2,8 @@ package document
 
 import (
 	"context"
+	"errors"
+	"strconv"
 
 	"github.com/MoScenix/industrial-fault-tree-ai/app/bff/biz/service"
 	"github.com/MoScenix/industrial-fault-tree-ai/app/bff/biz/utils"
@@ -13,16 +15,14 @@ import (
 // UploadUserDocument .
 // @router /document/user/upload [POST]
 func UploadUserDocument(ctx context.Context, c *app.RequestContext) {
-	var err error
-	var req document.UploadUserDocumentRequest
-	err = c.BindAndValidate(&req)
+	fileHeader, err := c.FormFile("file")
 	if err != nil {
 		utils.SendErrResponse(ctx, c, consts.StatusOK, err)
 		return
 	}
 
 	resp := &document.BaseResponseBoolean{}
-	resp, err = service.NewUploadUserDocumentService(ctx, c).Run(&req)
+	resp, err = service.NewUploadUserDocumentService(ctx, c).Run(fileHeader)
 	if err != nil {
 		utils.SendErrResponse(ctx, c, consts.StatusOK, err)
 		return
@@ -34,16 +34,22 @@ func UploadUserDocument(ctx context.Context, c *app.RequestContext) {
 // UploadProjectDocument .
 // @router /document/project/upload [POST]
 func UploadProjectDocument(ctx context.Context, c *app.RequestContext) {
-	var err error
-	var req document.UploadProjectDocumentRequest
-	err = c.BindAndValidate(&req)
+	fileHeader, err := c.FormFile("file")
 	if err != nil {
+		utils.SendErrResponse(ctx, c, consts.StatusOK, err)
+		return
+	}
+	graphID, err := strconv.ParseInt(c.PostForm("graphId"), 10, 64)
+	if err != nil || graphID <= 0 {
+		if err == nil {
+			err = errors.New("graphId is required")
+		}
 		utils.SendErrResponse(ctx, c, consts.StatusOK, err)
 		return
 	}
 
 	resp := &document.BaseResponseBoolean{}
-	resp, err = service.NewUploadProjectDocumentService(ctx, c).Run(&req)
+	resp, err = service.NewUploadProjectDocumentService(ctx, c).Run(graphID, fileHeader)
 	if err != nil {
 		utils.SendErrResponse(ctx, c, consts.StatusOK, err)
 		return

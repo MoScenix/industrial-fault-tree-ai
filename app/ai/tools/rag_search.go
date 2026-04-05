@@ -2,13 +2,13 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 
+	"github.com/MoScenix/industrial-fault-tree-ai/app/ai/infra/rpc"
 	lutils "github.com/MoScenix/industrial-fault-tree-ai/app/ai/utils"
+	document "github.com/MoScenix/industrial-fault-tree-ai/rpc_gen/kitex_gen/document"
 	"github.com/cloudwego/eino/components/tool"
 	einotool "github.com/cloudwego/eino/components/tool/utils"
 )
@@ -22,15 +22,30 @@ type RAGSearchRequest struct {
 
 // RAGChunk is a retrieval result item.
 type RAGChunk struct {
-	ChunkID      string
-	DocumentName string
-	Text         string
-	Score        float64
+	ChunkID      string  `json:"chunk_id,omitempty" jsonschema:"description=命中的证据片段ID"`
+	DocumentName string  `json:"document_name,omitempty" jsonschema:"description=证据来源文档名称"`
+	Text         string  `json:"text,omitempty" jsonschema:"description=返回的证据片段文本内容"`
+	Score        float64 `json:"score" jsonschema:"description=当前项目内简单匹配得分，分数越高代表命中越多"`
 }
 
 // RAGSearchResponse contains retrieved evidence chunks.
 type RAGSearchResponse struct {
-	Chunks []*RAGChunk
+	Chunks        []*RAGChunk `json:"chunks" jsonschema:"description=检索返回的证据片段列表"`
+	ReturnedCount int         `json:"returned_count" jsonschema:"description=本次实际返回的片段数量"`
+	ErrorMessage  string      `json:"error_message,omitempty" jsonschema:"description=检索异常时的错误信息；为空表示没有工具层错误"`
+}
+
+func logRAGSearchResult(resp *RAGSearchResponse) {
+	if resp == nil {
+		fmt.Printf("[tool:rag_search] result <nil>\n")
+		return
+	}
+	payload, err := json.Marshal(resp)
+	if err != nil {
+		fmt.Printf("[tool:rag_search] result_marshal_error=%q\n", err.Error())
+		return
+	}
+	fmt.Printf("[tool:rag_search] result=%s\n", string(payload))
 }
 
 func RAGSearchFunc(ctx context.Context, req *RAGSearchRequest) (*RAGSearchResponse, error) {
@@ -48,51 +63,65 @@ func RAGSearchFunc(ctx context.Context, req *RAGSearchRequest) (*RAGSearchRespon
 				}
 				return req.Query
 			}())
-		return &RAGSearchResponse{Chunks: []*RAGChunk{}}, nil
+		resp := &RAGSearchResponse{Chunks: []*RAGChunk{}, ReturnedCount: 0}
+		logRAGSearchResult(resp)
+		return resp, nil
 	}
 	fmt.Printf("[tool:rag_search] project=%s version=%s query=%q topk=%d\n",
 		projectCtx.ProjectID, projectCtx.CurrentVersion, req.Query, req.TopK)
-
-	docRoot := filepath.Join(lutils.ProjectDir(projectCtx.ProjectID), "documents")
-	matches := make([]*RAGChunk, 0)
-	queryTerms := tokenize(req.Query)
-
-	_ = filepath.Walk(docRoot, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info == nil || info.IsDir() {
-			return nil
+	if rpc.DocumentClient == nil {
+		resp := &RAGSearchResponse{
+			Chunks:        []*RAGChunk{},
+			ReturnedCount: 0,
+			ErrorMessage:  "document rpc client is unavailable",
 		}
-		if !isSearchableDocument(path) {
-			return nil
-		}
-		content, readErr := os.ReadFile(path)
-		if readErr != nil {
-			return nil
-		}
-		text := string(content)
-		score := scoreText(text, queryTerms)
-		if score <= 0 {
-			return nil
-		}
-		matches = append(matches, &RAGChunk{
-			ChunkID:      path,
-			DocumentName: filepath.Base(path),
-			Text:         truncateText(text, 600),
-			Score:        score,
-		})
-		return nil
-	})
-
-	sort.Slice(matches, func(i, j int) bool {
-		return matches[i].Score > matches[j].Score
-	})
-
-	limit := int(req.TopK)
-	if limit <= 0 || limit > len(matches) {
-		limit = len(matches)
+		logRAGSearchResult(resp)
+		return resp, nil
 	}
+
+	topK := req.TopK
+	if topK <= 0 {
+		topK = 3
+	}
+
+	searchResp, err := rpc.DocumentClient.SearchDocuments(ctx, &document.SearchDocumentsReq{
+		UserId:    "",
+		ProjectId: projectCtx.ProjectID,
+		Query:     req.Query,
+		TopK:      int64(topK),
+	})
+	if err != nil {
+		resp := &RAGSearchResponse{
+			Chunks:        []*RAGChunk{},
+			ReturnedCount: 0,
+			ErrorMessage:  err.Error(),
+		}
+		logRAGSearchResult(resp)
+		return resp, nil
+	}
+
+	results := searchResp.GetResults()
+	chunks := make([]*RAGChunk, 0, len(results))
+	for _, item := range results {
+		if item == nil {
+			continue
+		}
+		chunks = append(chunks, &RAGChunk{
+			ChunkID:      item.GetChunkId(),
+			DocumentName: item.GetDocumentName(),
+			Text:         item.GetText(),
+			Score:        item.GetScore(),
+		})
+	}
+
 	fmt.Printf("[tool:rag_search] project=%s matched=%d returned=%d\n",
-		projectCtx.ProjectID, len(matches), limit)
-	return &RAGSearchResponse{Chunks: matches[:limit]}, nil
+		projectCtx.ProjectID, len(results), len(chunks))
+	resp := &RAGSearchResponse{
+		Chunks:        chunks,
+		ReturnedCount: len(chunks),
+	}
+	logRAGSearchResult(resp)
+	return resp, nil
 }
 
 func NewRAGSearchTool() (tool.InvokableTool, error) {
@@ -101,34 +130,4 @@ func NewRAGSearchTool() (tool.InvokableTool, error) {
 		"在当前项目文档中检索证据片段。需要依据资料回答、校验或修改图时使用。",
 		RAGSearchFunc,
 	)
-}
-
-func isSearchableDocument(path string) bool {
-	ext := strings.ToLower(filepath.Ext(path))
-	return ext == ".txt" || ext == ".md" || ext == ".json"
-}
-
-func tokenize(query string) []string {
-	fields := strings.Fields(strings.ToLower(query))
-	return fields
-}
-
-func scoreText(text string, terms []string) float64 {
-	lower := strings.ToLower(text)
-	var score float64
-	for _, term := range terms {
-		if term == "" {
-			continue
-		}
-		score += float64(strings.Count(lower, term))
-	}
-	return score
-}
-
-func truncateText(text string, max int) string {
-	runes := []rune(text)
-	if len(runes) <= max {
-		return text
-	}
-	return string(runes[:max])
 }

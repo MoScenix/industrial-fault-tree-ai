@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -18,21 +19,39 @@ type WriteTmpGraphRequest struct {
 
 // WriteTmpGraphResponse reports the tmp write outcome.
 type WriteTmpGraphResponse struct {
-	Success        bool
-	TmpPath        string
-	BasedOnVersion string
+	Success        bool   `json:"success" jsonschema:"description=是否成功写回tmp图"`
+	TmpPath        string `json:"tmp_path,omitempty" jsonschema:"description=tmp图实际写入的文件路径"`
+	BasedOnVersion string `json:"based_on_version,omitempty" jsonschema:"description=本次tmp图所基于的正式版本号"`
+	ErrorMessage   string `json:"error_message,omitempty" jsonschema:"description=写图失败时的错误信息；success=false时优先查看这个字段"`
+}
+
+func logWriteTmpGraphResult(resp *WriteTmpGraphResponse) {
+	if resp == nil {
+		fmt.Printf("[tool:write_tmp_graph] result <nil>\n")
+		return
+	}
+	payload, err := json.Marshal(resp)
+	if err != nil {
+		fmt.Printf("[tool:write_tmp_graph] result_marshal_error=%q\n", err.Error())
+		return
+	}
+	fmt.Printf("[tool:write_tmp_graph] result=%s\n", string(payload))
 }
 
 func WriteTmpGraphFunc(ctx context.Context, req *WriteTmpGraphRequest) (*WriteTmpGraphResponse, error) {
 	projectCtx, _ := ctx.Value(lutils.ProjectContextKey).(*lutils.ProjectContext)
 	if projectCtx == nil || projectCtx.ProjectID == "" {
 		fmt.Printf("[tool:write_tmp_graph] empty project context\n")
-		return &WriteTmpGraphResponse{Success: false}, nil
+		resp := &WriteTmpGraphResponse{Success: false, ErrorMessage: "empty project context"}
+		logWriteTmpGraphResult(resp)
+		return resp, nil
 	}
 	if req == nil || req.Graph == nil {
 		fmt.Printf("[tool:write_tmp_graph] project=%s version=%s empty graph request\n",
 			projectCtx.ProjectID, projectCtx.CurrentVersion)
-		return &WriteTmpGraphResponse{Success: false}, nil
+		resp := &WriteTmpGraphResponse{Success: false, ErrorMessage: "empty graph request"}
+		logWriteTmpGraphResult(resp)
+		return resp, nil
 	}
 	fmt.Printf("[tool:write_tmp_graph] project=%s version=%s change_summary=%q nodes=%d\n",
 		projectCtx.ProjectID, projectCtx.CurrentVersion, req.ChangeSummary, len(req.Graph.Nodes))
@@ -44,15 +63,24 @@ func WriteTmpGraphFunc(ctx context.Context, req *WriteTmpGraphRequest) (*WriteTm
 	}
 	tmpPath := lutils.TmpVersionTreePath(projectCtx.ProjectID, projectCtx.CurrentVersion)
 	if err := lutils.SaveGraphFile(tmpPath, req.Graph); err != nil {
-		return nil, err
+		resp := &WriteTmpGraphResponse{
+			Success:        false,
+			TmpPath:        tmpPath,
+			BasedOnVersion: projectCtx.CurrentVersion,
+			ErrorMessage:   err.Error(),
+		}
+		logWriteTmpGraphResult(resp)
+		return resp, nil
 	}
 	fmt.Printf("[tool:write_tmp_graph] project=%s version=%s wrote=%s\n",
 		projectCtx.ProjectID, projectCtx.CurrentVersion, tmpPath)
-	return &WriteTmpGraphResponse{
+	resp := &WriteTmpGraphResponse{
 		Success:        true,
 		TmpPath:        tmpPath,
 		BasedOnVersion: projectCtx.CurrentVersion,
-	}, nil
+	}
+	logWriteTmpGraphResult(resp)
+	return resp, nil
 }
 
 func NewWriteTmpGraphTool() (tool.InvokableTool, error) {

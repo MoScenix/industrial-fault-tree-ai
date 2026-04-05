@@ -213,11 +213,8 @@ export async function chatToModifyGraph(
   options?: { [key: string]: any },
 ) {
   return request<API.ServerSentEventString>('/graph/chat', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    data: params,
+    method: 'GET',
+    params,
     ...(options || {}),
   })
 }
@@ -233,17 +230,20 @@ export async function chatToModifyGraphSSE(
     onDone?: () => void
   },
 ) {
-  const url = `${API_BASE_URL}/graph/chat`
+  const url = new URL(`${API_BASE_URL}/graph/chat`, window.location.origin)
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      url.searchParams.set(key, String(value))
+    }
+  })
 
   try {
-    const response = await fetch(url, {
-      method: 'POST',
+    const response = await fetch(url.toString(), {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
         Accept: 'text/event-stream',
       },
       credentials: 'include',
-      body: JSON.stringify(params),
     })
 
     if (!response.ok) {

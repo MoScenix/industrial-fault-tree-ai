@@ -61,8 +61,6 @@ interface Props {
   graphId: number
   selectedVersion: string
   currentVersion?: string
-  isEditorDirty: boolean
-  exportGraphModel: () => any
 }
 
 const props = defineProps<Props>()
@@ -122,21 +120,14 @@ const handleSend = async () => {
   chatting.value = true
 
   try {
-    const version = props.selectedVersion || props.currentVersion || 'v001'
-    
-    // 如果是首条消息，或者图已修改，则附带当前图上下文
-    let finalMessage = userContent
-    if (messages.value.length <= 2 || props.isEditorDirty) {
-      const graphJson = JSON.stringify(props.exportGraphModel())
-      finalMessage = `[Current Graph Context: ${graphJson}]\n\n${userContent}`
-    }
+    const version = props.selectedVersion || undefined
 
     let aiContent = ''
     let sseError = ''
     await chatToModifyGraphSSE(
       {
         graphId: props.graphId,
-        message: finalMessage,
+        message: userContent,
         version,
       },
       {

@@ -25,7 +25,7 @@ func (s *ParsePersonalPDFService) Run(req *document.ParsePersonalPDFReq) (resp *
 		}, nil
 	}
 
-	content, err := utils.ParsePDFFile(req.GetPdfId())
+	content, err := utils.ParsePDFFile(req.GetPdfId(), req.GetFileName())
 	if err != nil {
 		return &document.ParsePDFResp{
 			Success:      false,

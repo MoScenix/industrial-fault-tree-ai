@@ -23,10 +23,10 @@ milvus:
 
 embedding:
   provider: "openai"
-  model: "text-embedding-3-small"
+  model: "text-embedding-v4"
   api_key: "%s"
-  base_url: ""
-  dimension: 1536
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  dimension: 1024
   top_k: 5
 
 document:

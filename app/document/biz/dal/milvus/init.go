@@ -5,20 +5,22 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/MoScenix/industrial-fault-tree-ai/app/document/conf"
+	embedollama "github.com/cloudwego/eino-ext/components/embedding/ollama"
 	embedopenai "github.com/cloudwego/eino-ext/components/embedding/openai"
-	indexermilvus "github.com/cloudwego/eino-ext/components/indexer/milvus"
-	retrievermilvus "github.com/cloudwego/eino-ext/components/retriever/milvus"
+	indexermilvus "github.com/cloudwego/eino-ext/components/indexer/milvus2"
+	retrievermilvus "github.com/cloudwego/eino-ext/components/retriever/milvus2"
+	retrieversearchmode "github.com/cloudwego/eino-ext/components/retriever/milvus2/search_mode"
 	"github.com/cloudwego/eino/components/embedding"
 	"github.com/cloudwego/eino/components/indexer"
 	"github.com/cloudwego/eino/components/retriever"
-	"github.com/milvus-io/milvus-sdk-go/v2/client"
-	"github.com/milvus-io/milvus-sdk-go/v2/entity"
+	"github.com/milvus-io/milvus/client/v2/milvusclient"
 )
 
 var (
-	Client    client.Client
+	Client    *milvusclient.Client
 	Indexer   indexer.Indexer
 	Retriever retriever.Retriever
 )
@@ -28,29 +30,25 @@ var errUnsupportedEmbeddingProvider = errors.New("unsupported embedding provider
 func Init() {
 	cfg := conf.GetConf()
 	milvusPassword := fmt.Sprintf(cfg.Milvus.Password, os.Getenv("MILVUS_PASSWORD"))
-	embeddingAPIKey := fmt.Sprintf(cfg.Embedding.APIKey, os.Getenv("EMBEDDING_API_KEY"))
-	if cfg.Milvus.Address == "" || embeddingAPIKey == "" {
+	if cfg.Milvus.Address == "" {
 		return
 	}
 
 	ctx := context.Background()
-	var err error
-	Client, err = client.NewClient(ctx, client.Config{
+	clientConfig := &milvusclient.ClientConfig{
 		Address:  cfg.Milvus.Address,
 		Username: cfg.Milvus.Username,
 		Password: milvusPassword,
-	})
+		DBName:   cfg.Milvus.Database,
+	}
+
+	var err error
+	Client, err = milvusclient.New(ctx, clientConfig)
 	if err != nil {
 		panic(err)
 	}
 
-	if cfg.Milvus.Database != "" {
-		if err := Client.UsingDatabase(ctx, cfg.Milvus.Database); err != nil {
-			panic(err)
-		}
-	}
-
-	embedder, err := newEmbedder(ctx, embeddingAPIKey)
+	embedder, err := newEmbedder(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -58,8 +56,13 @@ func Init() {
 	Indexer, err = indexermilvus.NewIndexer(ctx, &indexermilvus.IndexerConfig{
 		Client:     Client,
 		Collection: cfg.Milvus.CollectionName,
-		Embedding:  embedder,
-		MetricType: indexermilvus.IP,
+		Vector: &indexermilvus.VectorConfig{
+			VectorField:  "vector",
+			Dimension:    cfg.Embedding.Dimension,
+			MetricType:   indexermilvus.COSINE,
+			IndexBuilder: indexermilvus.NewHNSWIndexBuilder(),
+		},
+		Embedding: embedder,
 	})
 	if err != nil {
 		panic(err)
@@ -71,7 +74,7 @@ func Init() {
 		Collection:   cfg.Milvus.CollectionName,
 		VectorField:  "vector",
 		OutputFields: []string{"id", "content", "metadata"},
-		MetricType:   entity.IP,
+		SearchMode:   retrieversearchmode.NewApproximate(retrievermilvus.COSINE),
 		Embedding:    embedder,
 		TopK:         defaultTopK,
 	})
@@ -80,10 +83,14 @@ func Init() {
 	}
 }
 
-func newEmbedder(ctx context.Context, apiKey string) (embedding.Embedder, error) {
+func newEmbedder(ctx context.Context) (embedding.Embedder, error) {
 	cfg := conf.GetConf()
 	switch cfg.Embedding.Provider {
 	case "", "openai":
+		apiKey := fmt.Sprintf(cfg.Embedding.APIKey, os.Getenv("EMBEDDING_API_KEY"))
+		if strings.TrimSpace(apiKey) == "" {
+			return nil, errors.New("embedding api key is required")
+		}
 		var dimensions *int
 		if cfg.Embedding.Dimension > 0 {
 			d := int(cfg.Embedding.Dimension)
@@ -95,6 +102,11 @@ func newEmbedder(ctx context.Context, apiKey string) (embedding.Embedder, error)
 			BaseURL:    cfg.Embedding.BaseURL,
 			Model:      cfg.Embedding.Model,
 			Dimensions: dimensions,
+		})
+	case "ollama":
+		return embedollama.NewEmbedder(ctx, &embedollama.EmbeddingConfig{
+			BaseURL: cfg.Embedding.BaseURL,
+			Model:   cfg.Embedding.Model,
 		})
 	default:
 		return nil, errUnsupportedEmbeddingProvider

@@ -94,8 +94,6 @@
             :graph-id="graphId" 
             :selected-version="selectedVersion"
             :current-version="graphInfo?.currentVersion"
-            :is-editor-dirty="isEditorDirty"
-            :export-graph-model="() => exportGraphModel(graphInfo?.graphName)"
             @success="handleChatSuccess"
           />
 
@@ -209,6 +207,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import axios from 'axios'
 import { message } from 'ant-design-vue'
 import type { Connection } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
@@ -467,11 +466,26 @@ const handleChatSuccess = async () => {
 }
 
 const beforeUploadProjectDoc = async (file: File) => {
-  const res = await uploadProjectDocument(graphId, file)
-  if (res.data.code === 0) {
-    message.success('项目文档上传成功')
-  } else {
-    message.error(res.data.message || '项目文档上传失败')
+  try {
+    const res = await uploadProjectDocument(graphId, file)
+    if (res.data.code === 0) {
+      message.success('项目文档上传成功')
+    } else {
+      message.error(res.data.message || '项目文档上传失败')
+    }
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const respData = error.response?.data
+      if (typeof respData === 'string' && respData.trim()) {
+        message.error(respData)
+      } else if (respData?.message) {
+        message.error(respData.message)
+      } else {
+        message.error(error.message || '项目文档上传失败')
+      }
+    } else {
+      message.error('项目文档上传失败')
+    }
   }
   return false
 }
