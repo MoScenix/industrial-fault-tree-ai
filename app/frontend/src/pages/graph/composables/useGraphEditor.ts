@@ -1,8 +1,19 @@
 import { ref, computed } from 'vue'
 import type { Node, Edge } from '@vue-flow/core'
-import { MarkerType } from '@vue-flow/core'
+import { MarkerType, Position } from '@vue-flow/core'
 import { message } from 'ant-design-vue'
 import { startEdit } from '@/api/graphController'
+
+type GraphNodeModel = {
+  node_id: string
+  node_type?: string
+  label?: string
+  description?: string
+  gate_type?: string
+  points_to?: string[]
+  pointed_by?: string[]
+  position?: { x: number; y: number }
+}
 
 export function useGraphEditor(graphId: number, currentVersionLabel: any) {
   const flowNodes = ref<Node[]>([])
@@ -23,6 +34,110 @@ export function useGraphEditor(graphId: number, currentVersionLabel: any) {
     if (type === 'gate') return '#ccfbf1'
     if (type === 'basic_event') return '#ffffff'
     return '#eff6ff'
+  }
+
+  const buildNodeStyle = (type?: string) => {
+    if (type === 'gate') {
+      return {
+        background: 'transparent',
+        width: '92px',
+        height: '72px',
+        border: 'none',
+        boxShadow: 'none',
+      }
+    }
+
+    return {
+      background: nodeColor(type),
+      width: '180px',
+      minHeight: '72px',
+    }
+  }
+
+  const buildHorizontalLayout = (nodes: GraphNodeModel[], topNodeId?: string) => {
+    const fallback = new Map<string, { x: number; y: number }>()
+    nodes.forEach((item, index: number) => {
+      fallback.set(item.node_id, {
+        x: 140 + (index % 3) * 260,
+        y: 80 + Math.floor(index / 3) * 140,
+      })
+    })
+
+    if (!nodes.length) {
+      return fallback
+    }
+
+    const rootId = topNodeId || nodes[0]?.node_id
+    const childrenMap = new Map<string, string[]>()
+    const parentMap = new Map<string, string[]>()
+    nodes.forEach((item) => {
+      const children = Array.isArray(item.points_to) ? item.points_to : []
+      childrenMap.set(item.node_id, children)
+      children.forEach((childId: string) => {
+        const parents = parentMap.get(childId) || []
+        parents.push(item.node_id)
+        parentMap.set(childId, parents)
+      })
+    })
+
+    const levelMap = new Map<string, number>()
+    const queue: string[] = []
+    if (rootId) {
+      levelMap.set(rootId, 0)
+      queue.push(rootId)
+    }
+
+    while (queue.length) {
+      const current = queue.shift()!
+      const nextLevel = (levelMap.get(current) || 0) + 1
+      ;(childrenMap.get(current) || []).forEach((childId: string) => {
+        if (!levelMap.has(childId)) {
+          levelMap.set(childId, nextLevel)
+          queue.push(childId)
+        }
+      })
+    }
+
+    nodes.forEach((item) => {
+      if (!levelMap.has(item.node_id)) {
+        const parentLevels = (parentMap.get(item.node_id) || [])
+          .map((parentId: string) => levelMap.get(parentId))
+          .filter((level): level is number => typeof level === 'number')
+        levelMap.set(
+          item.node_id,
+          parentLevels.length ? Math.max(...parentLevels) + 1 : 0,
+        )
+      }
+    })
+
+    const maxLevel = Math.max(...Array.from(levelMap.values()), 0)
+    const levelGroups = new Map<number, GraphNodeModel[]>()
+    nodes.forEach((item) => {
+      const level = levelMap.get(item.node_id) || 0
+      const group = levelGroups.get(level) || []
+      group.push(item)
+      levelGroups.set(level, group)
+    })
+
+    const positions = new Map<string, { x: number; y: number }>()
+    const horizontalGap = 280
+    const verticalGap = 132
+    const baseX = 140
+    const baseY = 100
+
+    Array.from(levelGroups.entries())
+      .sort((a, b) => a[0] - b[0])
+      .forEach(([level, group]) => {
+        const totalHeight = Math.max(group.length - 1, 0) * verticalGap
+        group.forEach((item, index) => {
+          positions.set(item.node_id, {
+            x: baseX + (maxLevel - level) * horizontalGap,
+            y: baseY + index * verticalGap - totalHeight / 2,
+          })
+        })
+      })
+
+    return positions
   }
 
   const buildDefaultGraph = () => {
@@ -88,16 +203,19 @@ export function useGraphEditor(graphId: number, currentVersionLabel: any) {
       pointedByMap.set(childId, pby)
     })
 
-    const nodes = flowNodes.value.map((node) => ({
-      node_id: node.id,
-      node_type: String(node.data?.nodeType || 'intermediate_event'),
-      label: String(node.data?.label || node.id),
-      description: String(node.data?.description || ''),
-      gate_type: String(node.data?.gateType || ''),
-      points_to: pointsToMap.get(node.id) || [],
-      pointed_by: pointedByMap.get(node.id) || [],
-      position: node.position,
-    }))
+    const nodes: GraphNodeModel[] = []
+    flowNodes.value.forEach((node) => {
+      nodes.push({
+        node_id: node.id,
+        node_type: String(node.data?.nodeType || 'intermediate_event'),
+        label: String(node.data?.label || node.id),
+        description: String(node.data?.description || ''),
+        gate_type: String(node.data?.gateType || ''),
+        points_to: pointsToMap.get(node.id) || [],
+        pointed_by: pointedByMap.get(node.id) || [],
+        position: node.position,
+      })
+    })
 
     return {
       schema_version: originalGraphMeta.value.schema_version || 'fault-tree/v1',
@@ -134,12 +252,18 @@ export function useGraphEditor(graphId: number, currentVersionLabel: any) {
     }
 
     const nodes = Array.isArray(parsed.nodes) ? parsed.nodes : []
+    const horizontalLayout = buildHorizontalLayout(
+      nodes,
+      parsed.tree?.top_node_id,
+    )
+
     flowNodes.value = nodes.map((item: any, index: number) => ({
       id: item.node_id || `node-${index + 1}`,
-      position: item.position || {
-        x: 100 + (index % 3) * 260,
-        y: 80 + Math.floor(index / 3) * 160,
-      },
+      position:
+        horizontalLayout.get(item.node_id || `node-${index + 1}`) || {
+          x: 100 + (index % 3) * 260,
+          y: 80 + Math.floor(index / 3) * 160,
+        },
       data: {
         label: item.label || item.node_id || `节点 ${index + 1}`,
         nodeType: item.node_type || 'intermediate_event',
@@ -147,10 +271,9 @@ export function useGraphEditor(graphId: number, currentVersionLabel: any) {
         gateType: item.gate_type || '',
       },
       type: 'custom',
-      style: {
-        background: nodeColor(item.node_type),
-        width: item.node_type === 'gate' ? '120px' : '180px',
-      },
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+      style: buildNodeStyle(item.node_type),
     }))
 
     const edges: Edge[] = []
@@ -163,12 +286,37 @@ export function useGraphEditor(graphId: number, currentVersionLabel: any) {
           source: childId,
           target: parentId,
           animated: item.node_type === 'gate',
+          type: 'smoothstep',
+          markerEnd: MarkerType.ArrowClosed,
         })
       })
     })
     flowEdges.value = edges
     workingContent.value = JSON.stringify(parsed, null, 2)
     isEditorDirty.value = false
+  }
+
+  const autoArrangeNodes = (graphName?: string) => {
+    const graphModel = exportGraphModel(graphName)
+    const nodes = Array.isArray(graphModel.nodes) ? graphModel.nodes : []
+    const positions = buildHorizontalLayout(
+      nodes,
+      graphModel.tree?.top_node_id,
+    )
+
+    flowNodes.value.forEach((node) => {
+      node.sourcePosition = Position.Right
+      node.targetPosition = Position.Left
+      node.position = positions.get(node.id) || node.position
+      node.style = {
+        ...node.style,
+        ...buildNodeStyle(String(node.data?.nodeType || 'intermediate_event')),
+      }
+    })
+    const refreshedNodes = flowNodes.value.slice() as unknown as Node[]
+    flowNodes.value = refreshedNodes
+
+    workingContent.value = JSON.stringify(exportGraphModel(graphName), null, 2)
   }
 
   const ensureEditReady = async (selectedVersion: string, currentVersion: string) => {
@@ -248,6 +396,7 @@ export function useGraphEditor(graphId: number, currentVersionLabel: any) {
     nodeColor,
     exportGraphModel,
     parseGraphContent,
+    autoArrangeNodes,
     markDirty,
     clearDraftCache,
     scheduleDraftSync,

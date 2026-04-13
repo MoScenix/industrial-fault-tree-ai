@@ -1,0 +1,20 @@
+FROM golang:1.25.5
+
+WORKDIR /usr/src/industrial-fault-tree-ai
+
+ENV GOPROXY=https://goproxy.cn,https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.google.cn
+
+COPY app/user/go.mod app/user/go.sum ./app/user/
+COPY rpc_gen ./rpc_gen
+COPY common ./common
+
+RUN cd app/user && go mod download && go mod verify
+
+COPY app/user ./app/user
+
+RUN cd app/user && go build -v -o server
+
+WORKDIR /usr/src/industrial-fault-tree-ai/app/user
+EXPOSE 8888
+CMD ["./server"]

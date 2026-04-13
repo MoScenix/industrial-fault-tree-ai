@@ -3,6 +3,8 @@ package agent
 import (
 	"context"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/MoScenix/industrial-fault-tree-ai/app/ai/tools"
 	ai "github.com/MoScenix/industrial-fault-tree-ai/rpc_gen/kitex_gen/ai"
@@ -16,6 +18,24 @@ func of[T any](v T) *T {
 	return &v
 }
 
+func envFloat32(key string, fallback float32) float32 {
+	if raw := strings.TrimSpace(os.Getenv(key)); raw != "" {
+		if parsed, err := strconv.ParseFloat(raw, 32); err == nil {
+			return float32(parsed)
+		}
+	}
+	return fallback
+}
+
+func envBool(key string, fallback bool) bool {
+	if raw := strings.TrimSpace(os.Getenv(key)); raw != "" {
+		if parsed, err := strconv.ParseBool(raw); err == nil {
+			return parsed
+		}
+	}
+	return fallback
+}
+
 func NewChatModel(ctx context.Context) (*qwen.ChatModel, error) {
 	modelName := os.Getenv("MODEL_NAME")
 	if modelName == "" {
@@ -27,12 +47,13 @@ func NewChatModel(ctx context.Context) (*qwen.ChatModel, error) {
 	}
 
 	return qwen.NewChatModel(ctx, &qwen.ChatModelConfig{
-		BaseURL:     baseURL,
-		APIKey:      os.Getenv("DASHSCOPE_API_KEY"),
-		Model:       modelName,
-		MaxTokens:   of(2048),
-		Temperature: of(float32(0.7)),
-		TopP:        of(float32(0.7)),
+		BaseURL:        baseURL,
+		APIKey:         os.Getenv("DASHSCOPE_API_KEY"),
+		Model:          modelName,
+		MaxTokens:      of(2048),
+		Temperature:    of(envFloat32("MODEL_TEMPERATURE", 0.2)),
+		TopP:           of(envFloat32("MODEL_TOP_P", 0.8)),
+		EnableThinking: of(envBool("MODEL_ENABLE_THINKING", false)),
 	})
 }
 

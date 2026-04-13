@@ -85,6 +85,36 @@
     - `MODIFY_MODE`
     - `LOG_MODE`
 
+## Eino ReAct 与千问的稳定性说明
+
+当前项目使用 `cloudwego/eino` 的 ReAct agent，并通过 `eino-ext/components/model/qwen` 接入千问。
+
+需要注意一个典型问题：
+
+- 千问在流式场景下可能先输出少量自然语言或 reasoning
+- 这会让 ReAct tool calling 更容易跑偏
+
+当前项目的稳定性策略不是改流式判定逻辑，而是优先约束模型输出纪律：
+
+- Prompt 层：明确要求“若下一步是工具调用，则 assistant 消息只能是工具调用本身”
+- 模型层：默认关闭 thinking，并降低采样随机性，优先保证工具调用稳定性
+
+这样可以尽量保留前端流式体验，同时减少“先说话、后调工具”的概率。
+
+当前代码默认策略：
+
+- `MODEL_ENABLE_THINKING=false`
+- 较低温度，优先稳定执行
+
+如需切换模型，仍然通过环境变量控制：
+
+- `MODEL_NAME`
+- `MODEL_BASE_URL`
+- `DASHSCOPE_API_KEY`
+- `MODEL_ENABLE_THINKING`
+- `MODEL_TEMPERATURE`
+- `MODEL_TOP_P`
+
 ## 不属于 AI Tool 的职责
 
 下面这些能力不属于 AI tool：

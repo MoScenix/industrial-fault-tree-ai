@@ -61,12 +61,11 @@ interface Props {
   graphId: number
   selectedVersion: string
   currentVersion?: string
+  isEditorDirty: boolean
+  onSuccess?: () => void
 }
 
 const props = defineProps<Props>()
-const emit = defineEmits<{
-  (e: 'success'): void
-}>()
 
 const messages = ref<API.GraphMessageVO[]>([])
 const chatInput = ref('')
@@ -120,8 +119,7 @@ const handleSend = async () => {
   chatting.value = true
 
   try {
-    const version = props.selectedVersion || undefined
-
+    const version = props.selectedVersion || props.currentVersion || 'v001'
     let aiContent = ''
     let sseError = ''
     await chatToModifyGraphSSE(
@@ -159,7 +157,7 @@ const handleSend = async () => {
     }
 
     message.success('AI 修改建议已同步')
-    emit('success')
+    if (props.onSuccess) props.onSuccess()
     await loadMessages()
   } catch (e) {
     console.error('对话失败:', e)

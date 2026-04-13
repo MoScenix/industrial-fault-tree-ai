@@ -14,6 +14,7 @@
       </div>
       <a-space wrap>
         <a-button type="primary" @click="openSaveModal">保存</a-button>
+        <a-button @click="handleAutoArrange">自动整理</a-button>
         <a-upload :show-upload-list="false" accept=".pdf" :before-upload="beforeUploadProjectDoc">
           <a-button>上传项目文档</a-button>
         </a-upload>
@@ -51,7 +52,7 @@
             fit-view-on-init
             :min-zoom="0.2"
             :max-zoom="1.6"
-            :default-edge-options="{ markerEnd: MarkerType.ArrowClosed }"
+            :default-edge-options="{ markerEnd: MarkerType.ArrowClosed, type: 'smoothstep' }"
             @node-drag-stop="handleMarkDirty"
             @connect="onConnect"
             @edges-change="handleMarkDirty"
@@ -62,13 +63,40 @@
             @pane-click="closeContextMenu"
           >
             <template #node-custom="props">
-              <div class="custom-node-content h-full w-full flex flex-col items-center justify-center p-2 relative box-border">
-                <Handle type="source" :position="Position.Top" />
-                <div class="custom-node-label text-center font-bold break-all w-full line-clamp-2">{{ props.data.label }}</div>
-                <div v-if="props.data.description" class="custom-node-desc text-[11px] text-gray-500 text-center mt-1 leading-tight break-all w-full line-clamp-2">
-                  {{ props.data.description }}
-                </div>
-                <Handle type="target" :position="Position.Bottom" />
+              <div
+                class="custom-node-content relative box-border"
+                :class="{ 'is-gate-node': props.data.nodeType === 'gate' }"
+              >
+                <Handle type="target" :position="Position.Left" />
+                <template v-if="props.data.nodeType === 'gate'">
+                  <div class="logic-gate" :title="props.data.gateType || 'GATE'">
+                    <svg
+                      v-if="props.data.gateType === 'AND'"
+                      viewBox="0 0 72 56"
+                      class="logic-gate-svg"
+                      aria-hidden="true"
+                    >
+                      <path d="M8 4 H32 A20 20 0 0 1 32 52 H8 Z" />
+                    </svg>
+                    <svg
+                      v-else
+                      viewBox="0 0 72 56"
+                      class="logic-gate-svg"
+                      aria-hidden="true"
+                    >
+                      <path d="M10 4 Q38 4 64 28 Q38 52 10 52 Q20 40 20 28 Q20 16 10 4 Z" />
+                    </svg>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="event-node-body">
+                    <div class="custom-node-label text-center font-bold break-all w-full line-clamp-2">{{ props.data.label }}</div>
+                    <div v-if="props.data.description" class="custom-node-desc text-[11px] text-gray-500 text-center mt-1 leading-tight break-all w-full line-clamp-2">
+                      {{ props.data.description }}
+                    </div>
+                  </div>
+                </template>
+                <Handle type="source" :position="Position.Right" />
               </div>
             </template>
             <Background pattern-color="#dbeafe" :gap="24" />
@@ -94,6 +122,7 @@
             :graph-id="graphId" 
             :selected-version="selectedVersion"
             :current-version="graphInfo?.currentVersion"
+            :is-editor-dirty="isEditorDirty"
             @success="handleChatSuccess"
           />
 
@@ -207,7 +236,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
 import { message } from 'ant-design-vue'
 import type { Connection } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
@@ -270,6 +298,7 @@ const {
   nodeColor,
   exportGraphModel,
   parseGraphContent,
+  autoArrangeNodes,
   markDirty,
   clearDraftCache,
   scheduleDraftSync,
@@ -333,6 +362,13 @@ const handleValidate = async () => {
   }
 }
 
+const handleAutoArrange = async () => {
+  autoArrangeNodes(graphInfo.value?.graphName)
+  handleMarkDirty()
+  scheduleDraftSync()
+  message.success('已按横向树结构自动整理当前图')
+}
+
 const addNode = () => {
   const id = `node-${Date.now()}`
   flowNodes.value.push({
@@ -340,7 +376,9 @@ const addNode = () => {
     position: { x: 250, y: 150 },
     type: 'custom',
     data: { label: '新节点', nodeType: 'intermediate_event', description: '', gateType: '' },
-    style: { background: nodeColor('intermediate_event'), width: '180px' },
+    sourcePosition: Position.Right,
+    targetPosition: Position.Left,
+    style: { background: nodeColor('intermediate_event'), width: '180px', minHeight: '72px' },
   })
   handleMarkDirty()
 }
@@ -376,8 +414,20 @@ const handleSaveNodeEdit = () => {
     node.data = { ...node.data, ...editingNodeData.value }
     node.style = {
       ...node.style,
-      background: nodeColor(editingNodeData.value.nodeType),
-      width: editingNodeData.value.nodeType === 'gate' ? '120px' : '180px',
+      ...(editingNodeData.value.nodeType === 'gate'
+        ? {
+            background: 'transparent',
+            width: '92px',
+            height: '72px',
+            border: 'none',
+            boxShadow: 'none',
+          }
+        : {
+            background: nodeColor(editingNodeData.value.nodeType),
+            width: '180px',
+            minHeight: '72px',
+            height: undefined,
+          }),
     }
     handleMarkDirty()
   }
@@ -466,26 +516,11 @@ const handleChatSuccess = async () => {
 }
 
 const beforeUploadProjectDoc = async (file: File) => {
-  try {
-    const res = await uploadProjectDocument(graphId, file)
-    if (res.data.code === 0) {
-      message.success('项目文档上传成功')
-    } else {
-      message.error(res.data.message || '项目文档上传失败')
-    }
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const respData = error.response?.data
-      if (typeof respData === 'string' && respData.trim()) {
-        message.error(respData)
-      } else if (respData?.message) {
-        message.error(respData.message)
-      } else {
-        message.error(error.message || '项目文档上传失败')
-      }
-    } else {
-      message.error('项目文档上传失败')
-    }
+  const res = await uploadProjectDocument(graphId, file)
+  if (res.data.code === 0) {
+    message.success('项目文档上传成功')
+  } else {
+    message.error(res.data.message || '项目文档上传失败')
   }
   return false
 }
@@ -790,7 +825,7 @@ watch(
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
 }
 :deep(.vue-flow__node-custom) {
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1px solid #94a3b8;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   transition: all 0.2s ease;
@@ -821,6 +856,54 @@ watch(
   line-height: 1.3;
 }
 
+.custom-node-content {
+  width: 100%;
+  height: 100%;
+}
+
+.event-node-body {
+  min-height: 72px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 10px 12px;
+  box-sizing: border-box;
+}
+
+:deep(.vue-flow__node-custom.is-gate-node) {
+  border: none;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.is-gate-node {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 92px;
+  height: 72px;
+}
+
+.logic-gate {
+  position: relative;
+  width: 72px;
+  height: 56px;
+  pointer-events: none;
+}
+
+.logic-gate-svg {
+  width: 72px;
+  height: 56px;
+}
+
+.logic-gate-svg path {
+  fill: #ffffff;
+  stroke: #0f766e;
+  stroke-width: 2.5;
+}
+
 .vue-flow__handle {
   width: 10px;
   height: 10px;
@@ -835,12 +918,12 @@ watch(
   transform: scale(1.5);
 }
 
-.vue-flow__handle-top {
-  top: -6px;
+.vue-flow__handle-left {
+  left: -6px;
 }
 
-.vue-flow__handle-bottom {
-  bottom: -6px;
+.vue-flow__handle-right {
+  right: -6px;
 }
 
 .vue-flow__edge-path {
