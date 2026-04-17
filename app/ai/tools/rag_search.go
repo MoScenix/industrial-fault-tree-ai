@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/MoScenix/industrial-fault-tree-ai/app/ai/infra/rpc"
 	lutils "github.com/MoScenix/industrial-fault-tree-ai/app/ai/utils"
@@ -34,6 +35,12 @@ type RAGSearchResponse struct {
 	ReturnedCount int         `json:"returned_count" jsonschema:"description=本次实际返回的片段数量"`
 	ErrorMessage  string      `json:"error_message,omitempty" jsonschema:"description=检索异常时的错误信息；为空表示没有工具层错误"`
 }
+
+const (
+	defaultRAGTopK       = 3
+	maxRAGTopK           = 3
+	maxRAGChunkTextRunes = 500
+)
 
 func logRAGSearchResult(resp *RAGSearchResponse) {
 	if resp == nil {
@@ -81,7 +88,10 @@ func RAGSearchFunc(ctx context.Context, req *RAGSearchRequest) (*RAGSearchRespon
 
 	topK := req.TopK
 	if topK <= 0 {
-		topK = 3
+		topK = defaultRAGTopK
+	}
+	if topK > maxRAGTopK {
+		topK = maxRAGTopK
 	}
 
 	searchResp, err := rpc.DocumentClient.SearchDocuments(ctx, &document.SearchDocumentsReq{
@@ -106,10 +116,14 @@ func RAGSearchFunc(ctx context.Context, req *RAGSearchRequest) (*RAGSearchRespon
 		if item == nil {
 			continue
 		}
+		text := sanitizeRAGText(item.GetText())
+		if text == "" {
+			continue
+		}
 		chunks = append(chunks, &RAGChunk{
 			ChunkID:      item.GetChunkId(),
 			DocumentName: item.GetDocumentName(),
-			Text:         item.GetText(),
+			Text:         text,
 			Score:        item.GetScore(),
 		})
 	}
@@ -130,4 +144,69 @@ func NewRAGSearchTool() (tool.InvokableTool, error) {
 		"在当前项目文档中检索证据片段。需要依据资料回答、校验或修改图时使用。",
 		RAGSearchFunc,
 	)
+}
+
+func sanitizeRAGText(text string) string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return ""
+	}
+
+	var b strings.Builder
+	b.Grow(len(text))
+	for _, r := range text {
+		switch {
+		case r == '\n' || r == '\t':
+			b.WriteRune(r)
+		case unicode.IsControl(r):
+			continue
+		default:
+			b.WriteRune(r)
+		}
+	}
+
+	cleaned := normalizeWhitespace(b.String())
+	if cleaned == "" || looksGarbled(cleaned) {
+		return ""
+	}
+
+	runes := []rune(cleaned)
+	if len(runes) > maxRAGChunkTextRunes {
+		cleaned = strings.TrimSpace(string(runes[:maxRAGChunkTextRunes])) + "...(已截断)"
+	}
+	return cleaned
+}
+
+func normalizeWhitespace(text string) string {
+	lines := strings.Split(text, "\n")
+	normalized := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(strings.Join(strings.Fields(line), " "))
+		if line == "" {
+			continue
+		}
+		normalized = append(normalized, line)
+	}
+	return strings.TrimSpace(strings.Join(normalized, "\n"))
+}
+
+func looksGarbled(text string) bool {
+	var total, weird int
+	for _, r := range text {
+		if unicode.IsSpace(r) {
+			continue
+		}
+		total++
+		if unicode.IsControl(r) || r == unicode.ReplacementChar || isExtendedLatin(r) {
+			weird++
+		}
+	}
+	if total == 0 {
+		return true
+	}
+	return weird*100/total >= 20
+}
+
+func isExtendedLatin(r rune) bool {
+	return r >= 0x00C0 && r <= 0x024F
 }

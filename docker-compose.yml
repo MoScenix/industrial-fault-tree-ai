@@ -50,7 +50,7 @@ services:
       retries: 30
 
   etcd:
-    image: quay.io/coreos/etcd:v3.5.5
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/quay.io/coreos/etcd:v3.5.5
     environment:
       ETCDCTL_API: "3"
     command:
@@ -126,6 +126,24 @@ services:
       - "16686:16686"
       - "4317:4317"
       - "4318:4318"
+      - "14269:14269"
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./deploy/config/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    ports:
+      - "3000:3000"
 
   user:
     build:
@@ -140,6 +158,7 @@ services:
       MYSQL_DATABASE: industrial_fault_tree_ai
       MYSQL_HOST: mysql
       REDIS_PASSWORD: redis123456
+      OTEL_EXPORTER_OTLP_ENDPOINT: jaeger:4317
     depends_on:
       consul:
         condition: service_healthy
@@ -147,6 +166,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      jaeger:
+        condition: service_started
 
   graph:
     build:
@@ -163,6 +184,7 @@ services:
       MYSQL_DATABASE: industrial_fault_tree_ai
       MYSQL_HOST: mysql
       REDIS_PASSWORD: redis123456
+      OTEL_EXPORTER_OTLP_ENDPOINT: jaeger:4317
     depends_on:
       consul:
         condition: service_healthy
@@ -170,6 +192,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      jaeger:
+        condition: service_started
 
   ai:
     build:
@@ -187,12 +211,14 @@ services:
       MYSQL_HOST: mysql
       REDIS_PASSWORD: redis123456
       GRAPH_ROOT_DIR: /graph
-      MODEL_NAME: qwen-max
+      MODEL_NAME: qwen3-max
+      MODEL_MAX_TOKENS: 30000
       MODEL_BASE_URL: https://dashscope.aliyuncs.com/compatible-mode/v1
       MODEL_ENABLE_THINKING: "false"
       MODEL_TEMPERATURE: "0.2"
       MODEL_TOP_P: "0.8"
-      DASHSCOPE_API_KEY: ""
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY}
+      OTEL_EXPORTER_OTLP_ENDPOINT: jaeger:4317
     depends_on:
       consul:
         condition: service_healthy
@@ -200,6 +226,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      jaeger:
+        condition: service_started
       graph:
         condition: service_started
 
@@ -213,12 +241,16 @@ services:
       - ./volumes/document:/document
     environment:
       GO_ENV: online
-      EMBEDDING_API_KEY: ""
-      MILVUS_PASSWORD: ""
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY}
+      MILVUS_PASSWORD: ${MILVUS_PASSWORD:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: jaeger:4317
     depends_on:
       consul:
         condition: service_healthy
       milvus-standalone:
+        condition: service_started
+      jaeger:
         condition: service_started
 
   bff:
@@ -239,6 +271,7 @@ services:
       MYSQL_HOST: mysql
       REDIS_PASSWORD: redis123456
       SESSION_SECRET: industrial-fault-tree-secret
+      OTEL_EXPORTER_OTLP_ENDPOINT: jaeger:4317
     depends_on:
       consul:
         condition: service_healthy
@@ -246,6 +279,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      jaeger:
+        condition: service_started
       user:
         condition: service_started
       graph:
@@ -260,10 +295,10 @@ services:
       context: .
       dockerfile: docker_files/DockerFile.frontend
       args:
-        VITE_DEPLOY_DOMAIN: http://localhost:8080
+        VITE_DEPLOY_DOMAIN: http://124.221.120.118:8080
         VITE_API_BASE_URL: /api
     ports:
-      - "8080:80"
+      - "80:80"
     depends_on:
       bff:
         condition: service_started
@@ -275,3 +310,5 @@ volumes:
   etcd_data: {}
   minio_data: {}
   milvus_data: {}
+  prometheus_data: {}
+  grafana_data: {}

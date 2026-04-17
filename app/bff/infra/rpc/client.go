@@ -15,6 +15,7 @@ import (
 	"github.com/cloudwego/kitex/pkg/discovery"
 	"github.com/cloudwego/kitex/pkg/endpoint"
 	"github.com/cloudwego/kitex/pkg/transmeta"
+	"github.com/kitex-contrib/obs-opentelemetry/tracing"
 	consul "github.com/kitex-contrib/registry-consul"
 )
 
@@ -45,6 +46,7 @@ func initUserClient() {
 		"user",
 		client.WithResolver(r),
 		client.WithMetaHandler(transmeta.MetainfoClientHandler),
+		client.WithSuite(tracing.NewClientSuite()),
 		client.WithMiddleware(injectIdentityMetaMiddleware()),
 	)
 	if err != nil {
@@ -59,6 +61,7 @@ func initGraphClient() {
 		"graph",
 		client.WithResolver(r),
 		client.WithMetaHandler(transmeta.MetainfoClientHandler),
+		client.WithSuite(tracing.NewClientSuite()),
 		client.WithMiddleware(injectIdentityMetaMiddleware()),
 	)
 	if err != nil {
@@ -73,6 +76,7 @@ func initDocumentClient() {
 		"document",
 		client.WithResolver(r),
 		client.WithMetaHandler(transmeta.MetainfoClientHandler),
+		client.WithSuite(tracing.NewClientSuite()),
 		client.WithMiddleware(injectIdentityMetaMiddleware()),
 	)
 	if err != nil {
@@ -87,6 +91,7 @@ func initAiClient() {
 		"ai",
 		client.WithResolver(r),
 		client.WithMetaHandler(transmeta.MetainfoClientHandler),
+		client.WithSuite(tracing.NewClientSuite()),
 		client.WithMiddleware(injectIdentityMetaMiddleware()),
 	)
 	if err != nil {

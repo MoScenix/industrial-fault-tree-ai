@@ -71,7 +71,8 @@ func (s *ChatService) Run(req *ai.ChatReq, stream ai.AiService_ChatServer) (err 
 			if recvErr == io.EOF {
 				break
 			}
-			klog.Error(recvErr)
+			klog.Errorf("ai chat stream recv failed: project=%s version=%s history=%d err=%v",
+				req.ProjectId, targetVersion, len(req.History), recvErr)
 			return recvErr
 		}
 		if msg == nil || msg.Content == "" {

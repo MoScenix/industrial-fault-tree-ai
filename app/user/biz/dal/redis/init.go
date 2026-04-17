@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/MoScenix/industrial-fault-tree-ai/app/user/conf"
+	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -20,6 +21,12 @@ func Init() {
 		Password: fmt.Sprintf(conf.GetConf().Redis.Password, os.Getenv("REDIS_PASSWORD")),
 		DB:       conf.GetConf().Redis.DB,
 	})
+	if err := redisotel.InstrumentTracing(RedisClient); err != nil {
+		panic(err)
+	}
+	if err := redisotel.InstrumentMetrics(RedisClient); err != nil {
+		panic(err)
+	}
 	if err := RedisClient.Ping(context.Background()).Err(); err != nil {
 		panic(err)
 	}

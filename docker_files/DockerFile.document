@@ -2,14 +2,24 @@ FROM golang:1.25.5
 
 WORKDIR /usr/src/industrial-fault-tree-ai
 
-ENV GOPROXY=https://goproxy.cn,https://proxy.golang.org,direct
-ENV GOSUMDB=sum.golang.google.cn
+ENV GOPROXY=https://goproxy.cn,direct
+ENV GOSUMDB=off
 
+RUN sed -i 's|http://deb.debian.org/debian|https://mirrors.tuna.tsinghua.edu.cn/debian|g; s|http://deb.debian.org/debian-security|https://mirrors.tuna.tsinghua.edu.cn/debian-security|g' /etc/apt/sources.list.d/debian.sources \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends poppler-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY common/go.mod common/go.sum ./common/
+COPY rpc_gen/go.mod rpc_gen/go.sum ./rpc_gen/
 COPY app/document/go.mod app/document/go.sum ./app/document/
+
+WORKDIR /usr/src/industrial-fault-tree-ai/app/document
+RUN go mod download
+
+WORKDIR /usr/src/industrial-fault-tree-ai
 COPY rpc_gen ./rpc_gen
 COPY common ./common
-
-RUN cd app/document && go mod download && go mod verify
 
 COPY app/document ./app/document
 

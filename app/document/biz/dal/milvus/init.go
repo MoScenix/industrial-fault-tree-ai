@@ -87,7 +87,7 @@ func newEmbedder(ctx context.Context) (embedding.Embedder, error) {
 	cfg := conf.GetConf()
 	switch cfg.Embedding.Provider {
 	case "", "openai":
-		apiKey := fmt.Sprintf(cfg.Embedding.APIKey, os.Getenv("EMBEDDING_API_KEY"))
+		apiKey := resolveEmbeddingAPIKey(cfg.Embedding.APIKey)
 		if strings.TrimSpace(apiKey) == "" {
 			return nil, errors.New("embedding api key is required")
 		}
@@ -111,4 +111,14 @@ func newEmbedder(ctx context.Context) (embedding.Embedder, error) {
 	default:
 		return nil, errUnsupportedEmbeddingProvider
 	}
+}
+
+func resolveEmbeddingAPIKey(template string) string {
+	if key := strings.TrimSpace(os.Getenv("EMBEDDING_API_KEY")); key != "" {
+		return fmt.Sprintf(template, key)
+	}
+	if key := strings.TrimSpace(os.Getenv("DASHSCOPE_API_KEY")); key != "" {
+		return fmt.Sprintf(template, key)
+	}
+	return strings.TrimSpace(fmt.Sprintf(template, ""))
 }

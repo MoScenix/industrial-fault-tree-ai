@@ -36,10 +36,19 @@ func envBool(key string, fallback bool) bool {
 	return fallback
 }
 
+func envInt(key string, fallback int) int {
+	if raw := strings.TrimSpace(os.Getenv(key)); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			return parsed
+		}
+	}
+	return fallback
+}
+
 func NewChatModel(ctx context.Context) (*qwen.ChatModel, error) {
 	modelName := os.Getenv("MODEL_NAME")
 	if modelName == "" {
-		modelName = "qwen-max"
+		modelName = "qwen3-max"
 	}
 	baseURL := os.Getenv("MODEL_BASE_URL")
 	if baseURL == "" {
@@ -50,7 +59,7 @@ func NewChatModel(ctx context.Context) (*qwen.ChatModel, error) {
 		BaseURL:        baseURL,
 		APIKey:         os.Getenv("DASHSCOPE_API_KEY"),
 		Model:          modelName,
-		MaxTokens:      of(2048),
+		MaxTokens:      of(envInt("MODEL_MAX_TOKENS", 30000)),
 		Temperature:    of(envFloat32("MODEL_TEMPERATURE", 0.2)),
 		TopP:           of(envFloat32("MODEL_TOP_P", 0.8)),
 		EnableThinking: of(envBool("MODEL_ENABLE_THINKING", false)),

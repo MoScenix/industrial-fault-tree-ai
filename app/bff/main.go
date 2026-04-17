@@ -24,6 +24,7 @@ import (
 	"github.com/hertz-contrib/gzip"
 	"github.com/hertz-contrib/logger/accesslog"
 	hertzlogrus "github.com/hertz-contrib/logger/logrus"
+	hertztracing "github.com/hertz-contrib/obs-opentelemetry/tracing"
 	"github.com/hertz-contrib/pprof"
 	"github.com/hertz-contrib/sessions"
 	"github.com/hertz-contrib/sessions/redis"
@@ -35,12 +36,15 @@ import (
 func main() {
 	// init dal
 	godotenv.Load()
+	tp := mtl.TraceInit(conf.GetConf().Hertz.Service)
+	defer tp.Shutdown(context.Background())
 	dal.Init()
 	mtl.InitMetric(conf.GetConf().Hertz.Service, conf.GetConf().Hertz.MetricsPort, conf.GetConf().Consul.Address)
 	address := conf.GetConf().Hertz.Address
-	h := server.New(server.WithHostPorts(address))
+	tracer, traceCfg := hertztracing.NewServerTracer()
+	h := server.New(server.WithHostPorts(address), tracer)
 	rpc.Init()
-	registerMiddleware(h)
+	registerMiddleware(h, traceCfg)
 
 	// add a ping route to test
 	h.GET("/ping", func(c context.Context, ctx *app.RequestContext) {
@@ -52,7 +56,7 @@ func main() {
 	h.Spin()
 }
 
-func registerMiddleware(h *server.Hertz) {
+func registerMiddleware(h *server.Hertz, traceCfg *hertztracing.Config) {
 	store, err := redis.NewStore(
 		100,
 		"tcp",
@@ -69,6 +73,7 @@ func registerMiddleware(h *server.Hertz) {
 		rs.SetSerializer(sessions.JSONSerializer{})
 	}
 	h.Use(sessions.New("moscenix", store))
+	h.Use(hertztracing.ServerMiddleware(traceCfg))
 	// log
 	logger := hertzlogrus.NewLogger()
 	hlog.SetLogger(logger)

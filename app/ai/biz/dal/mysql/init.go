@@ -5,9 +5,9 @@ import (
 	"os"
 
 	"github.com/MoScenix/industrial-fault-tree-ai/app/ai/conf"
-
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	otelgorm "gorm.io/plugin/opentelemetry/tracing"
 )
 
 var (
@@ -24,6 +24,9 @@ func Init() {
 		},
 	)
 	if err != nil {
+		panic(err)
+	}
+	if err := DB.Use(otelgorm.NewPlugin(otelgorm.WithDBSystem("mysql"), otelgorm.WithoutMetrics())); err != nil {
 		panic(err)
 	}
 }

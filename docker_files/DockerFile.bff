@@ -2,14 +2,19 @@ FROM golang:1.25.5
 
 WORKDIR /usr/src/industrial-fault-tree-ai
 
-ENV GOPROXY=https://goproxy.cn,https://proxy.golang.org,direct
-ENV GOSUMDB=sum.golang.google.cn
+ENV GOPROXY=https://goproxy.cn,direct
+ENV GOSUMDB=off
 
+COPY common/go.mod common/go.sum ./common/
+COPY rpc_gen/go.mod rpc_gen/go.sum ./rpc_gen/
 COPY app/bff/go.mod app/bff/go.sum ./app/bff/
+
+WORKDIR /usr/src/industrial-fault-tree-ai/app/bff
+RUN go mod download
+
+WORKDIR /usr/src/industrial-fault-tree-ai
 COPY rpc_gen ./rpc_gen
 COPY common ./common
-
-RUN cd app/bff && go mod download && go mod verify
 
 COPY app/bff ./app/bff
 

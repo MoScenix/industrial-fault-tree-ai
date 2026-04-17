@@ -5,6 +5,7 @@ import (
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/pkg/transmeta"
 	"github.com/cloudwego/kitex/transport"
+	"github.com/kitex-contrib/obs-opentelemetry/tracing"
 )
 
 type CommonClient struct {
@@ -18,6 +19,7 @@ func (c *CommonClient) Options() []client.Option {
 		}),
 		client.WithMetaHandler(transmeta.ClientTTHeaderHandler),
 		client.WithTransportProtocol(transport.GRPC),
+		client.WithSuite(tracing.NewClientSuite()),
 	}
 	return opts
 }

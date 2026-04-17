@@ -1,25 +1,28 @@
 package main
 
 import (
+	"context"
 	"net"
 	"time"
 
-	"github.com/MoScenix/industrial-fault-tree-ai/app/ai/infra/rpc"
 	"github.com/MoScenix/industrial-fault-tree-ai/app/ai/conf"
+	"github.com/MoScenix/industrial-fault-tree-ai/app/ai/infra/rpc"
 	"github.com/MoScenix/industrial-fault-tree-ai/common/mtl"
 	"github.com/MoScenix/industrial-fault-tree-ai/common/serversuit"
 	"github.com/MoScenix/industrial-fault-tree-ai/rpc_gen/kitex_gen/ai/aiservice"
 	"github.com/cloudwego/kitex/pkg/klog"
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/server"
-	kitexlogrus "github.com/kitex-contrib/obs-opentelemetry/logging/logrus"
 	"github.com/joho/godotenv"
+	kitexlogrus "github.com/kitex-contrib/obs-opentelemetry/logging/logrus"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func main() {
 	godotenv.Load()
+	tp := mtl.TraceInit(conf.GetConf().Kitex.Service)
+	defer tp.Shutdown(context.Background())
 	rpc.Init()
 	mtl.InitMetric(conf.GetConf().Kitex.Service, conf.GetConf().Kitex.MetricsPort, conf.GetConf().Registry.RegistryAddress[0])
 	opts := kitexInit()
