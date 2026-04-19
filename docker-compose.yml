@@ -204,21 +204,21 @@ services:
     volumes:
       - ./volumes/graph:/graph
     environment:
-      GO_ENV: online
-      MYSQL_USER: root
-      MYSQL_PASSWORD: root123456
-      MYSQL_DATABASE: industrial_fault_tree_ai
-      MYSQL_HOST: mysql
-      REDIS_PASSWORD: redis123456
-      GRAPH_ROOT_DIR: /graph
-      MODEL_NAME: qwen3-max
-      MODEL_MAX_TOKENS: 30000
-      MODEL_BASE_URL: https://dashscope.aliyuncs.com/compatible-mode/v1
-      MODEL_ENABLE_THINKING: "false"
-      MODEL_TEMPERATURE: "0.2"
-      MODEL_TOP_P: "0.8"
-      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY}
-      OTEL_EXPORTER_OTLP_ENDPOINT: jaeger:4317
+      - GO_ENV=online
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root123456
+      - MYSQL_DATABASE=industrial_fault_tree_ai
+      - MYSQL_HOST=mysql
+      - REDIS_PASSWORD=redis123456
+      - GRAPH_ROOT_DIR=/graph
+      - MODEL_NAME=qwen3-max
+      - MODEL_MAX_TOKENS=30000
+      - MODEL_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+      - MODEL_ENABLE_THINKING=false
+      - MODEL_TEMPERATURE=0.2
+      - MODEL_TOP_P=0.8
+      - DASHSCOPE_API_KEY
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
     depends_on:
       consul:
         condition: service_healthy
@@ -240,11 +240,11 @@ services:
     volumes:
       - ./volumes/document:/document
     environment:
-      GO_ENV: online
-      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY}
-      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY}
-      MILVUS_PASSWORD: ${MILVUS_PASSWORD:-}
-      OTEL_EXPORTER_OTLP_ENDPOINT: jaeger:4317
+      - GO_ENV=online
+      - EMBEDDING_API_KEY
+      - DASHSCOPE_API_KEY
+      - MILVUS_PASSWORD
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
     depends_on:
       consul:
         condition: service_healthy

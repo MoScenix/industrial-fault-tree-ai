@@ -9,9 +9,6 @@ COPY common/go.mod common/go.sum ./common/
 COPY rpc_gen/go.mod rpc_gen/go.sum ./rpc_gen/
 COPY app/bff/go.mod app/bff/go.sum ./app/bff/
 
-WORKDIR /usr/src/industrial-fault-tree-ai/app/bff
-RUN go mod download
-
 WORKDIR /usr/src/industrial-fault-tree-ai
 COPY rpc_gen ./rpc_gen
 COPY common ./common
