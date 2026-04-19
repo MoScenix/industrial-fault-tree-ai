@@ -50,24 +50,28 @@
 
 作用：
 
-- 读取当前工作图
+- 读取请求版本对应的工作图文件
 
 规则：
 
-- 指定 `version` 时，优先读该版本的 `tmp/<version>/tree.json`
-- 如果该版本没有 `tmp`，则读取 `versions/<version>/tree.json`
-- 不传 `version` 时，默认读取 `current` 指向的版本
+- 版本始终来自请求上下文，不接受模型自行指定
+- 优先读该版本的 `tmp/<version>/tree.json`
+- 如果该版本没有 `tmp`，则回退读取 `versions/<version>/tree.json` 作为初始内容
+- 返回 `file_path`、`line_count`、`numbered_content`
+- AI 必须基于返回的行号做修改
 
 ### `write_tmp_graph`
 
 作用：
 
-- 将 AI 整理好的完整图写回 `tmp/<version>/tree.json`
+- 按行编辑 `tmp/<version>/tree.json`
 
 规则：
 
 - 只允许写 `tmp`
 - 不直接碰目录版本
+- 只支持 `insert` / `delete`
+- 单次插入内容大小由提示词约束，避免模型输出过长被截断
 - 写回后由工程师决定是否保存
 
 ## 当前 AI 业务语义

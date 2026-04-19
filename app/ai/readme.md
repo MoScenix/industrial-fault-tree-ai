@@ -29,6 +29,10 @@
 - `read_tmp_graph`
 - `write_tmp_graph`
 
+其中：
+- `read_tmp_graph` 返回带行号的 tmp 图文件内容
+- `write_tmp_graph` 按行做 `insert` / `delete`
+
 ## 当前约束
 
 - AI 只写 `tmp/<version>/tree.json`

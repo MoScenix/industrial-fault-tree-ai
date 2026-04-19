@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,6 +80,78 @@ func SaveGraphFile(path string, graph *GraphFile) error {
 	return os.WriteFile(path, content, 0o644)
 }
 
+func GraphFileLines(graph *GraphFile) ([]string, error) {
+	if graph == nil {
+		return nil, errors.New("graph is nil")
+	}
+	content, err := json.MarshalIndent(graph, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return splitLines(string(content)), nil
+}
+
+func LoadTextLines(path string) ([]string, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return splitLines(string(content)), nil
+}
+
+func SaveTextLines(path string, lines []string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(joinLines(lines)), 0o644)
+}
+
+func DefaultGraphLines(projectID string) ([]string, error) {
+	return GraphFileLines(DefaultGraphFile(projectID))
+}
+
+func NumberedLines(lines []string) string {
+	if len(lines) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	for i, line := range lines {
+		fmt.Fprintf(&b, "%d| %s", i+1, line)
+		if i < len(lines)-1 {
+			b.WriteByte('\n')
+		}
+	}
+	return b.String()
+}
+
+func InsertTextAtLine(lines []string, line int, content string) ([]string, error) {
+	inserted := splitLines(content)
+	if len(inserted) == 0 {
+		return nil, errors.New("content is empty")
+	}
+	if line < 1 || line > len(lines)+1 {
+		return nil, fmt.Errorf("line out of range: valid 1..%d", len(lines)+1)
+	}
+	result := make([]string, 0, len(lines)+len(inserted))
+	result = append(result, lines[:line-1]...)
+	result = append(result, inserted...)
+	result = append(result, lines[line-1:]...)
+	return result, nil
+}
+
+func DeleteLineRange(lines []string, startLine, endLine int) ([]string, error) {
+	if len(lines) == 0 {
+		return nil, errors.New("file is empty")
+	}
+	if startLine < 1 || endLine < startLine || endLine > len(lines) {
+		return nil, fmt.Errorf("line range out of range: valid 1..%d", len(lines))
+	}
+	result := make([]string, 0, len(lines)-(endLine-startLine+1))
+	result = append(result, lines[:startLine-1]...)
+	result = append(result, lines[endLine:]...)
+	return result, nil
+}
+
 func LoadWorkingGraph(projectID, version string) (*GraphFile, string, bool, error) {
 	if version == "" {
 		currentVersion, err := ReadCurrentVersion(projectID)
@@ -111,6 +184,25 @@ func DefaultGraphFile(projectID string) *GraphFile {
 			TopNodeID: "",
 		},
 		Nodes: []*GraphNode{},
-		Meta: GraphMeta{},
+		Meta:  GraphMeta{},
 	}
+}
+
+func splitLines(content string) []string {
+	normalized := strings.ReplaceAll(content, "\r\n", "\n")
+	if normalized == "" {
+		return []string{}
+	}
+	lines := strings.Split(normalized, "\n")
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	return lines
+}
+
+func joinLines(lines []string) string {
+	if len(lines) == 0 {
+		return ""
+	}
+	return strings.Join(lines, "\n") + "\n"
 }
