@@ -56,7 +56,10 @@ func ParsePDFFile(pdfID, fileName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return ParsePDFPath(pdfPath)
+}
 
+func ParsePDFPath(pdfPath string) (string, error) {
 	type parseCandidate struct {
 		text string
 		err  error

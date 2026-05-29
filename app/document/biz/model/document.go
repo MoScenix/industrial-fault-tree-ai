@@ -3,8 +3,11 @@ package model
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	dalmilvus "github.com/MoScenix/industrial-fault-tree-ai/app/document/biz/dal/milvus"
+	milvus2 "github.com/cloudwego/eino-ext/components/retriever/milvus2"
 	eretriever "github.com/cloudwego/eino/components/retriever"
 	"github.com/cloudwego/eino/schema"
 )
@@ -43,6 +46,7 @@ var (
 	ErrMilvusIndexerUnavailable    = errors.New("milvus indexer is unavailable")
 	ErrMilvusRetrieverUnavailable  = errors.New("milvus retriever is unavailable")
 	ErrDocumentLookupUnimplemented = errors.New("document lookup is not implemented")
+	ErrSearchScopeRequired         = errors.New("search scope required: project_id or user_id")
 )
 
 const embeddingBatchSize = 10
@@ -110,11 +114,16 @@ func (q *DocumentQuery) SearchDocuments(userID, projectID, query string, topK in
 	if dalmilvus.Retriever == nil {
 		return nil, ErrMilvusRetrieverUnavailable
 	}
+	filterExpr, err := buildOwnerFilter(userID, projectID)
+	if err != nil {
+		return nil, err
+	}
 
 	opts := make([]eretriever.Option, 0, 1)
 	if topK > 0 {
 		opts = append(opts, eretriever.WithTopK(int(topK)))
 	}
+	opts = append(opts, milvus2.WithFilter(filterExpr))
 
 	docs, err := dalmilvus.Retriever.Retrieve(q.ctx, query, opts...)
 	if err != nil {
@@ -144,4 +153,30 @@ func valueAsString(v any) string {
 		return s
 	}
 	return ""
+}
+
+func buildOwnerFilter(userID, projectID string) (string, error) {
+	projectID = strings.TrimSpace(projectID)
+	userID = strings.TrimSpace(userID)
+
+	if projectID != "" {
+		return fmt.Sprintf(
+			"owner_type == 'PROJECT' and owner_id == '%s'",
+			escapeMilvusString(projectID),
+		), nil
+	}
+
+	if userID != "" {
+		return fmt.Sprintf(
+			"owner_type == 'PERSONAL' and owner_id == '%s'",
+			escapeMilvusString(userID),
+		), nil
+	}
+
+	return "", ErrSearchScopeRequired
+}
+
+func escapeMilvusString(s string) string {
+	escaped := strings.ReplaceAll(s, "\\", "\\\\")
+	return strings.ReplaceAll(escaped, "'", "\\'")
 }
