@@ -73,6 +73,12 @@ services:
       - new
       - --initial-cluster-token
       - etcd-cluster-1
+      - --auto-compaction-mode
+      - revision
+      - --auto-compaction-retention
+      - "1000"
+      - --quota-backend-bytes
+      - "536870912"
     ports:
       - "2379:2379"
     volumes:
@@ -114,9 +120,15 @@ services:
       - milvus_data:/var/lib/milvus
     depends_on:
       etcd:
-        condition: service_started
+        condition: service_healthy
       minio:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9091/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 20s
 
   jaeger:
     image: jaegertracing/all-in-one:1.58
@@ -235,6 +247,7 @@ services:
     build:
       context: .
       dockerfile: docker_files/DockerFile.document
+    restart: on-failure:5
     ports:
       - "8892:8892"
     volumes:
@@ -244,12 +257,13 @@ services:
       - EMBEDDING_API_KEY
       - DASHSCOPE_API_KEY
       - MILVUS_PASSWORD
+      - RAG_EVAL_LOG_FILE=/document/rag_eval_results.jsonl
       - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
     depends_on:
       consul:
         condition: service_healthy
       milvus-standalone:
-        condition: service_started
+        condition: service_healthy
       jaeger:
         condition: service_started
 

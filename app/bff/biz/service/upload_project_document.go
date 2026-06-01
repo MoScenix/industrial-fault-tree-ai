@@ -4,7 +4,6 @@ import (
 	"context"
 	"mime/multipart"
 	"path/filepath"
-	"strconv"
 
 	document "github.com/MoScenix/industrial-fault-tree-ai/app/bff/hertz_gen/bff/document"
 	"github.com/MoScenix/industrial-fault-tree-ai/app/bff/infra/rpc"
@@ -22,11 +21,16 @@ func NewUploadProjectDocumentService(Context context.Context, RequestContext *ap
 }
 
 func (h *UploadProjectDocumentService) Run(graphID int64, fileHeader *multipart.FileHeader) (resp *document.BaseResponseBoolean, err error) {
-	if _, err := loadAuthorizedGraphRecord(h.Context, graphID); err != nil {
+	item, err := loadAuthorizedGraphRecord(h.Context, graphID)
+	if err != nil {
 		return &document.BaseResponseBoolean{Code: 1, Message: graphAccessError(err).Error()}, nil
 	}
 	if fileHeader == nil {
 		return &document.BaseResponseBoolean{Code: 1, Message: "file is required"}, nil
+	}
+	projectID := projectIDFromDir(item.ProjectDir)
+	if projectID == "" {
+		return &document.BaseResponseBoolean{Code: 1, Message: "invalid project scope"}, nil
 	}
 	pdfID := newObjectID()
 	fileName := sanitizeUploadFileName(fileHeader, pdfID+".pdf")
@@ -36,7 +40,7 @@ func (h *UploadProjectDocumentService) Run(graphID int64, fileHeader *multipart.
 	}
 
 	parseResp, err := rpc.DocumentClient.ParseProjectPDF(h.Context, &rpcdocument.ParseProjectPDFReq{
-		ProjectId: strconv.FormatInt(graphID, 10),
+		ProjectId: projectID,
 		PdfId:     pdfID, FileName: fileName, DisplayName: fileName,
 	})
 	if err != nil {

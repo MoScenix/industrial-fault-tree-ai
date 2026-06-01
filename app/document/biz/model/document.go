@@ -95,6 +95,10 @@ func (q *DocumentQuery) CreateDocument(doc Document) error {
 		}
 	}
 
+	if err := dalmilvus.FlushCollection(q.ctx); err != nil {
+		return err
+	}
+
 	return nil
 }
 

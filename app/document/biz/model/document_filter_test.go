@@ -47,4 +47,3 @@ func TestBuildOwnerFilter_EscapeSpecialChars(t *testing.T) {
 		t.Fatalf("unexpected filter, got=%q want=%q", filter, expected)
 	}
 }
-
