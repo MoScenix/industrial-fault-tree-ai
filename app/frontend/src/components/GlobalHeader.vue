@@ -169,31 +169,39 @@ const handleUserDocumentUpload = async (file: File) => {
 
 <style scoped>
 .header {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95);
   padding: 0 24px;
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e5e7eb;
+  height: 56px;
+  line-height: 56px;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .logo {
-  height: 48px;
-  width: 48px;
+  height: 36px;
+  width: 36px;
 }
 
 .site-title {
   margin: 0;
-  font-size: 18px;
-  color: #1d4ed8;
+  font-size: 16px;
+  font-weight: 600;
+  color: #4f46e5;
 }
 
-.ant-menu-horizontal {
+:deep(.ant-menu-horizontal) {
   border-bottom: none !important;
+}
+
+:deep(.ant-menu-item) {
+  padding: 0 16px !important;
+  font-size: 14px;
 }
 
 .user-login-status {

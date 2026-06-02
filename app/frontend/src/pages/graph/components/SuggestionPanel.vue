@@ -1,13 +1,25 @@
 <template>
-  <div class="flex flex-col h-full overflow-hidden">
-    <div class="mb-4 flex-shrink-0 flex justify-between items-center">
-      <span class="text-xs text-slate-500">AI 逻辑校验建议</span>
-      <a-button type="primary" size="small" :loading="loading" @click="$emit('validate')">
-        开始校验
-      </a-button>
+  <div class="flex flex-col h-full">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100">
+      <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">AI 校验建议</span>
+      <button
+        class="text-xs font-medium text-indigo-600 hover:text-indigo-500 transition-colors disabled:opacity-40"
+        :disabled="loading"
+        @click="$emit('validate')"
+      >
+        {{ loading ? '校验中...' : '开始校验' }}
+      </button>
     </div>
-    <div class="suggestion-box flex-1 overflow-auto bg-slate-50 rounded-xl p-4 border border-slate-100">
-      <MarkdownRenderer :content="content || '当前版本暂无建议内容。点击下方“开始校验”按钮，让 AI 检查故障树逻辑。'" />
+
+    <!-- Content -->
+    <div class="flex-1 overflow-y-auto px-4 py-4">
+      <div
+        class="prose prose-sm max-w-none text-sm text-gray-600 leading-relaxed"
+        :class="{ 'opacity-50': loading }"
+      >
+        <MarkdownRenderer :content="content || '点击上方「开始校验」让 AI 检查故障树逻辑。'" />
+      </div>
     </div>
   </div>
 </template>
@@ -27,11 +39,10 @@ defineEmits<{
 </script>
 
 <style scoped>
-.suggestion-box pre {
+.prose :deep(p) {
+  margin: 0 0 0.75em;
+}
+.prose :deep(p:last-child) {
   margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: #334155;
-  line-height: 1.7;
 }
 </style>

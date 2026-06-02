@@ -1,8 +1,8 @@
 <template>
-  <div id="userCenterPage" class="min-h-[calc(100vh-120px)] bg-[#f8fafc] py-10 px-4">
+  <div class="h-full bg-gray-50 py-8 px-4 overflow-y-auto">
     <div class="max-w-5xl mx-auto flex flex-col md:flex-row gap-8">
       <!-- 左侧：用户信息卡片 -->
-      <div class="w-full md:w-1/3">
+      <div class="w-full md:w-1/3 flex-shrink-0">
         <div
           class="group bg-white border border-gray-100 rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl text-center"
         >
@@ -34,7 +34,7 @@
       </div>
 
       <!-- 右侧：基本资料设置 -->
-      <div class="w-full md:w-2/3">
+      <div class="w-full md:w-2/3 min-w-0">
         <div class="bg-white border border-gray-100 rounded-2xl p-8 md:p-10 shadow-sm">
           <div class="flex items-center gap-3 mb-8">
             <div class="w-1.5 h-6 bg-blue-600 rounded-full"></div>

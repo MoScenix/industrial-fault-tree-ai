@@ -1,54 +1,78 @@
 <template>
-  <a-space direction="vertical" style="width: 100%">
-    <div class="panel-actions">
-      <a-button type="primary" @click="showCreateModal = true">新建版本</a-button>
+  <div class="flex flex-col h-full">
+    <!-- Header with actions -->
+    <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100">
+      <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">版本列表</span>
+      <button
+        class="text-xs font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+        @click="showCreateModal = true"
+      >
+        + 新建
+      </button>
     </div>
-    <a-list :data-source="versions" size="small">
-      <template #renderItem="{ item }">
-        <a-list-item class="version-row" @click="$emit('switch', item.version)">
-          <div class="version-main">
-            <div class="version-title">
-              {{ item.versionName || item.version }}
-              <a-tag v-if="item.version === currentVersionLabel" color="blue">当前</a-tag>
-            </div>
-            <div class="version-meta">{{ item.version }}</div>
-          </div>
-          <div class="version-actions">
-            <a-button type="link" size="small" @click.stop="openRename(item)">重命名</a-button>
-            <a-button
-              type="link"
-              size="small"
-              danger
-              :disabled="item.version === currentVersionLabel"
-              @click.stop="remove(item)"
-            >
-              删除
-            </a-button>
-          </div>
-        </a-list-item>
-      </template>
-    </a-list>
 
+    <!-- Version list -->
+    <div class="flex-1 overflow-y-auto">
+      <div v-if="!versions.length" class="text-center text-gray-400 text-sm mt-8">暂无版本</div>
+      <div
+        v-for="item in versions"
+        :key="item.version"
+        class="group flex items-center justify-between px-4 py-3 cursor-pointer border-b border-gray-50 hover:bg-gray-50 transition-colors"
+        :class="{ 'bg-indigo-50/40': item.version === currentVersionLabel }"
+        @click="$emit('switch', item.version)"
+      >
+        <div class="flex items-center gap-2 min-w-0">
+          <div
+            class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+            :class="item.version === currentVersionLabel ? 'bg-indigo-600' : 'bg-gray-300'"
+          ></div>
+          <div class="min-w-0">
+            <div class="text-sm font-medium text-gray-900 truncate">{{ item.versionName || item.version }}</div>
+          </div>
+          <span v-if="item.version === currentVersionLabel" class="text-[11px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded flex-shrink-0">当前</span>
+        </div>
+        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+          <button
+            class="px-2 py-1 text-[11px] text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+            @click.stop="openRename(item)"
+          >
+            重命名
+          </button>
+          <button
+            v-if="item.version !== currentVersionLabel"
+            class="px-2 py-1 text-[11px] text-red-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+            @click.stop="remove(item)"
+          >
+            删除
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Modal -->
     <a-modal
       v-model:open="showCreateModal"
       title="新建版本"
       ok-text="创建"
       cancel-text="取消"
+      class="!rounded-xl"
       @ok="handleCreate"
     >
-      <a-input v-model:value="versionDraft" placeholder="例如：v002 或 仿真优化版" />
+      <a-input v-model:value="versionDraft" placeholder="例如：v002 或 仿真优化版" class="!rounded-lg" />
     </a-modal>
 
+    <!-- Rename Modal -->
     <a-modal
       v-model:open="showRenameModal"
       title="重命名版本"
       ok-text="保存"
       cancel-text="取消"
+      class="!rounded-xl"
       @ok="handleRename"
     >
-      <a-input v-model:value="versionDraft" placeholder="输入新的版本名称" />
+      <a-input v-model:value="versionDraft" placeholder="输入新的版本名称" class="!rounded-lg" />
     </a-modal>
-  </a-space>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -136,34 +160,5 @@ const remove = async (item: API.GraphVersionVO) => {
 </script>
 
 <style scoped>
-.version-row {
-  cursor: pointer;
-  border-radius: 12px;
-  transition: background 0.2s ease;
-}
-.version-row:hover {
-  background: #f8fafc;
-}
-.version-main {
-  flex: 1;
-}
-.version-title {
-  color: #0f172a;
-  font-weight: 600;
-}
-.version-meta {
-  color: #94a3b8;
-  font-size: 12px;
-}
-.version-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.panel-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 12px;
-  margin-top: 12px;
-}
+/* All styles replaced by Tailwind */
 </style>
