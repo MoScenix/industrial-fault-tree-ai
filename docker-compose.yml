@@ -257,7 +257,6 @@ services:
       - EMBEDDING_API_KEY
       - DASHSCOPE_API_KEY
       - MILVUS_PASSWORD
-      - RAG_EVAL_LOG_FILE=/document/rag_eval_results.jsonl
       - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
     depends_on:
       consul:
