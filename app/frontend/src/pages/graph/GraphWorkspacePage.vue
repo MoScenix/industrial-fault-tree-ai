@@ -137,6 +137,8 @@
             @connect="onConnect"
             @edges-change="handleMarkDirty"
             @nodes-change="handleMarkDirty"
+            @connect-start="connecting = true"
+            @connect-end="connecting = false"
             @pane-context-menu="onPaneContextMenu"
             @node-context-menu="onNodeContextMenu"
             @edge-context-menu="onEdgeContextMenu"
@@ -156,7 +158,7 @@
                       class="w-[72px] h-[56px]"
                       aria-hidden="true"
                     >
-                      <path d="M8 4 H32 A20 20 0 0 1 32 52 H8 Z" fill="#fff" stroke="#0f766e" stroke-width="2.5" />
+                      <path d="M8 4 H32 A20 20 0 0 1 32 52 H8 Z" fill="#fff" stroke="#6b7280" stroke-width="2.5" />
                     </svg>
                     <svg
                       v-else
@@ -164,7 +166,7 @@
                       class="w-[72px] h-[56px]"
                       aria-hidden="true"
                     >
-                      <path d="M10 4 Q38 4 64 28 Q38 52 10 52 Q20 40 20 28 Q20 16 10 4 Z" fill="#fff" stroke="#0f766e" stroke-width="2.5" />
+                      <path d="M10 4 Q38 4 64 28 Q38 52 10 52 Q20 40 20 28 Q20 16 10 4 Z" fill="#fff" stroke="#6b7280" stroke-width="2.5" />
                     </svg>
                   </div>
                 </template>
@@ -341,6 +343,7 @@ const editingNodeId = ref('')
 const editingNodeData = ref({ label: '', nodeType: 'intermediate_event', description: '', gateType: '' })
 
 const contextMenu = ref({ show: false, x: 0, y: 0, type: '', nodeId: '' })
+const connecting = ref(false)
 
 const closeContextMenu = () => {
   contextMenu.value.show = false
@@ -697,40 +700,83 @@ watch(
   border-radius: 12px;
   border: 1.5px solid #d1d5db;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  transition: all 0.2s ease;
+  transition: box-shadow 0.2s ease;
   overflow: visible !important;
   background: white;
 }
 
 :deep(.vue-flow__node-custom.selected) {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  border-color: #374151;
+  box-shadow: 0 0 0 3px rgba(55, 65, 81, 0.15);
 }
 
 :deep(.vue-flow__node-custom:hover) {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 }
 
 :deep(.vue-flow__handle) {
   width: 8px;
   height: 8px;
-  background-color: #9ca3af;
+  background: #374151;
   border: 2px solid white;
-  transition: all 0.2s ease;
+  border-radius: 50%;
+  transition: all 0.2s ease-out;
   z-index: 10;
+  opacity: 0.3;
+  cursor: crosshair;
+}
+
+:deep(.vue-flow__node-custom:hover .vue-flow__handle) {
+  width: 24px;
+  height: 24px;
+  opacity: 1;
 }
 
 :deep(.vue-flow__handle:hover) {
-  background-color: #6366f1;
-  transform: scale(1.4);
+  width: 28px !important;
+  height: 28px !important;
+}
+
+:deep(.vue-flow__handle::before) {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: white;
+  border-radius: 1px;
+  transform: translate(-50%, -50%);
+  transition: width 0.2s ease-out;
+}
+
+:deep(.vue-flow__handle::after) {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 0;
+  background: white;
+  border-radius: 1px;
+  transform: translate(-50%, -50%);
+  transition: height 0.2s ease-out;
+}
+
+:deep(.vue-flow__node-custom:hover .vue-flow__handle::before) {
+  width: 12px;
+}
+
+:deep(.vue-flow__node-custom:hover .vue-flow__handle::after) {
+  height: 12px;
 }
 
 :deep(.vue-flow__handle-left) {
-  left: -5px;
+  left: -4px;
 }
 
 :deep(.vue-flow__handle-right) {
-  right: -5px;
+  right: -4px;
 }
 
 :deep(.vue-flow__edge-path) {
